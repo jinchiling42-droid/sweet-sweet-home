@@ -1,35 +1,363 @@
-import React,{useEffect,useRef,useState} from 'react';import{createRoot}from'react-dom/client';import{Folder,FileText,Video,Calculator,Settings as Gear,Grid3X3,Lock,Phone,HardDrive,StickyNote,Power,ChevronLeft,Play,RotateCcw,Volume2,VolumeX,Save,Download, X,Minus,Square,Check,ArrowRight, Monitor,Clock,Heart, Coffee,Menu as MenuIcon}from'lucide-react';import './style.css';import './retro.css';import './pixel.css';import {Room,RetroIcon} from './visuals';
+import { StrictMode, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { createRoot } from 'react-dom/client';
+import { Clock3, FolderLock, Minus, Power, Square, X } from 'lucide-react';
+import {
+  apps, Hidden, Notes, PatientRecord, PersonalFile, Records, titles, type AppId, type SceneKey, type WindowKey,
+} from './archive';
+import { CalculatorApp, Minesweeper, VideoApp } from './desktop-apps';
+import {
+  emptyProgress, local, readPreferences, readProgress, readSave, storage, type Lang, type Text,
+} from './game';
+import { Novel } from './novel';
+import { RetroIcon, Room } from './visuals';
+import './style.css';
+import './retro.css';
+import './playtest.css';
 
-type Lang='ko'|'zh';type Patient={explored:string[];called:boolean};type Data={lang:Lang;sound:boolean;patients:Patient[]};type Win={id:string;title:string;type:string;x:number;y:number;z:number;min:boolean;closing?:boolean;minimizing?:boolean;max?:boolean;patient?:number;word?:string;note?:string};
-const words=[['거울','통제','수치심'],['배고픔','관계','기억']];const keys=['mirror','control','shame','hunger','relation','memory'];
-const strings:any={ko:{menu:'파일 편집 보기 이동 도움말',record:'환자 기록',notes:'메모',video:'비디오',mine:'지뢰찾기',calc:'계산기',settings:'설정',hidden:'숨겨진 폴더',open:'열기',return:'돌아가기',close:'닫기',call:'전화 회상',records:'상담 기록',view:'기록 보기',list:'환자 목록',phone:'전화 연결',explore:'회상 탐색',explored:'탐색 완료',locked:'잠김',unlocked:'열림',patient:'환자',complete:'완료',save:'저장',load:'불러오기',reset:'데모 초기화',language:'언어',sound:'효과음',noSave:'저장된 진행이 없습니다.',saved:'진행을 저장했습니다.',loaded:'저장된 진행을 불러왔습니다.',ko:'한국어',zh:'中文',returnDesktop:'데스크톱으로',continue:'계속',answer:'답변 선택',backRecords:'기록으로 돌아가기'},zh:{menu:'文件 编辑 显示 前往 帮助',record:'患者记录',notes:'备忘录',video:'视频',mine:'扫雷',calc:'计算器',settings:'设置',hidden:'隐藏文件夹',open:'打开',return:'返回',close:'关闭',records:'咨询记录',view:'查看记录',list:'患者列表',phone:'电话回访',explore:'回忆探索',explored:'已探索',locked:'锁定',unlocked:'已解锁',patient:'患者',complete:'完成',save:'保存进度',load:'读取进度',reset:'重置 Demo',language:'语言',sound:'音效',noSave:'没有已保存的进度。',saved:'进度已保存。',loaded:'已读取最近存档。',ko:'한국어',zh:'中文',returnDesktop:'返回桌面',continue:'继续',answer:'选择回应',backRecords:'返回记录'}};
-function App(){const [phase,setPhase]=useState<'room'|'boot'|'desktop'>(()=>sessionStorage.getItem('started')==='1'?'desktop':'room');const [lang,setLang]=useState<Lang>(()=>localStorage.getItem('ssh-pref')?JSON.parse(localStorage.getItem('ssh-pref')!).lang:'ko');const [sound,setSound]=useState(false);const [patients,setPatients]=useState<Patient[]>(()=>JSON.parse(localStorage.getItem('ssh-progress')||'null')?.patients||[{explored:[],called:false},{explored:[],called:false}]);const [wins,setWins]=useState<Win[]>([]);const [focus,setFocus]=useState('');const [toast,setToast]=useState('');const [selected,setSelected]=useState(0);const [dialog,setDialog]=useState('');const [now,setNow]=useState(new Date());const [menu,setMenu]=useState(false);const t=strings[lang];const top=useRef(100);const drag=useRef<any>(null);const iconTap=useRef<{type:string;time:number}|null>(null);
-useEffect(()=>{localStorage.setItem('ssh-progress',JSON.stringify({patients}));localStorage.setItem('ssh-pref',JSON.stringify({lang,sound}));},[patients,lang,sound]);useEffect(()=>{let i=setInterval(()=>setNow(new Date()),10000);return()=>clearInterval(i)},[]);useEffect(()=>{let tm:any; if(toast)tm=setTimeout(()=>setToast(''),2300);return()=>clearTimeout(tm)},[toast]);
-const allDone=patients.every(p=>p.called&&p.explored.length>=3);const p=patients[selected];const exploredCount=(n:number)=>patients[n].explored.length;
-function open(type:string,patient?:number,word?:string,note?:string){if(type==='call')setDialog('');const names:any={records:t.record,notes:t.notes,video:t.video,mine:t.mine,calc:t.calc,settings:t.settings,hidden:t.hidden,detail:`${t.patient} 0${(patient??0)+1}`,log:t.records,flashback:'기억의 장면',call:'전화 연결',unlocked:t.hidden};let id=['records','notes','video','mine','calc','settings','hidden'].includes(type)?type:type==='detail'?`detail${patient}`:type==='log'?`log${patient}`:type==='flashback'?`flash${patient}${word}`:type==='call'?`call${patient}`:type==='unlocked'?`unlock${note}`:type+Date.now();setWins(v=>{if(v.some(w=>w.id===id)){setFocus(id);return v.map(w=>w.id===id?{...w,min:false,z:++top.current}:w)}return [...v,{id,title:names[type]||type,type,x:Math.min(120+(v.length%6)*28,Math.max(12,window.innerWidth-740)),y:Math.min(76+(v.length%6)*25,Math.max(48,window.innerHeight-650)),z:++top.current,min:false,patient,word,note}]});setFocus(id)}function close(id:string){patch(id,{closing:true});setTimeout(()=>{setWins(v=>v.filter(w=>w.id!==id));setFocus('')},220)};function patch(id:string,o:Partial<Win>){setWins(v=>v.map(w=>w.id===id?{...w,...o}:w))}function updatePatient(n:number,fn:(p:Patient)=>Patient){setPatients(v=>v.map((p,i)=>i===n?fn(p):p))}
-useEffect(()=>{function key(e:KeyboardEvent){if(e.key==='Escape'){if(dialog)setDialog('');else if(focus)close(focus)}}window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[focus,dialog]);
-function powerOff(){sessionStorage.removeItem('started');setWins([]);setFocus('');setDialog('');setMenu(false);setPhase('room')}
-function start(){setToast('');setPhase('boot');sessionStorage.setItem('started','1');setTimeout(()=>{setPhase('desktop');open('records')},280)}
-if(phase!=='desktop')return <Room starting={phase==='boot'} onStart={start} onCake={()=>setToast(lang==='ko'?'작은 케이크 한 조각. 오늘은 천천히 시작해도 좋아요.':'一小块蛋糕。今天也可以慢慢开始。')} lang={lang} notice={toast}/>;
-return <main className="desktop" onPointerMove={e=>{if(drag.current){const dx=e.clientX-drag.current.sx,dy=e.clientY-drag.current.sy;patch(drag.current.id,{x:Math.max(0,Math.min(window.innerWidth-120,drag.current.x+dx)),y:Math.max(34,Math.min(window.innerHeight-80,drag.current.y+dy))});}}} onPointerUp={()=>drag.current=null} onPointerCancel={()=>drag.current=null}>
-<div className="wallpaper"><div className="horizon"/><div className="sun"/><div className="hill h1"/><div className="hill h2"/><div className="grain"/></div><header className="menubar"><div className="menuleft"><b className="mark">S</b><b>Sweet OS</b><button onClick={()=>setMenu(!menu)}><MenuIcon size={15}/></button><span>{t.menu}</span></div><div className="menuright"><button onClick={()=>open('settings')}><Monitor size={14}/></button><span>◔</span><span>{now.toLocaleTimeString(lang==='ko'?'ko-KR':'zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false})}</span></div>{menu&&<div className="menudrop"><button onClick={()=>open('records')}>{t.record}</button><button onClick={()=>open('settings')}>{t.settings}</button><button onClick={()=>setDialog('reset')}>{t.reset}</button></div>}</header>
-<div className="desktop-icons">{[{type:'records',icon:<Folder/>,label:t.record},{type:'notes',icon:<StickyNote/>,label:t.notes},{type:'video',icon:<Video/>,label:t.video},{type:'mine',icon:<Grid3X3/>,label:t.mine},{type:'calc',icon:<Calculator/>,label:t.calc},{type:'settings',icon:<Gear/>,label:t.settings},{type:'hidden',icon:allDone?<Folder/>:<Lock/>,label:t.hidden,locked:!allDone}].map(a=><button className={'deskicon '+(a.locked?'locked':'')} key={a.type} onKeyDown={e=>{if(e.key==='Enter')open(a.type)}} onDoubleClick={()=>open(a.type)} onClick={()=>open(a.type)}><span className={'appicon '+a.type}><RetroIcon kind={a.type}/></span><span>{a.label}</span>{a.type==='hidden'&&<small>{allDone?'':'🔒'}</small>}</button>)}</div>
-{wins.map(w=><section className={'window type-'+w.type+' '+(focus===w.id?'focused ':'')+(w.closing?'closing ':'')+(w.minimizing?'minimizing ':'')+(w.min?'minimized ':'')+(w.max?'maximized':'')} key={w.id} style={{left:w.x,top:w.y,zIndex:w.z}} onPointerDown={()=>{setFocus(w.id);patch(w.id,{z:++top.current})}}><div className="titlebar" onPointerDown={e=>{if((e.target as HTMLElement).closest('button'))return;drag.current={id:w.id,sx:e.clientX,sy:e.clientY,x:w.x,y:w.y};(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)}}><div className="traffic"><button className="red" title={t.close} onClick={()=>close(w.id)}><X/></button><button className="yellow" title="Minimize" onClick={()=>{patch(w.id,{minimizing:true});setTimeout(()=>patch(w.id,{min:true,minimizing:false}),220)}}><Minus/></button><button className="green" title="Zoom" onClick={()=>patch(w.id,{max:!w.max})}><Square/></button></div><span>{localizedTitle(w,t,lang)}</span><span className="title-meta">● ● ●</span></div><div className="winbody">{renderWindow(w,{t,patients,selected,setSelected,p,allDone,exploredCount,open,close,patch,updatePatient,setToast,setLang,setSound,sound,lang,setDialog,dialog,setPatients,powerOff})}</div></section>)}
-<div className="dock">{[{type:'records',icon:<Folder/>},{type:'notes',icon:<StickyNote/>},{type:'video',icon:<Video/>},{type:'mine',icon:<Grid3X3/>},{type:'calc',icon:<Calculator/>},{type:'settings',icon:<Gear/>}].map(a=><button title={a.type==='records'?t.record:t[a.type]} key={a.type} onClick={()=>open(a.type)}><RetroIcon kind={a.type}/></button>)}<i/><button title={t.hidden} onClick={()=>open('hidden')}><RetroIcon kind="hidden"/></button></div>
-{dialog==='reset'&&<div className="scrim"><div className="confirm"><h3>데모 진행을 초기화할까요?</h3><p>탐색한 기록과 전화 회상 상태가 모두 지워집니다.</p><button onClick={()=>setDialog('')}>취소</button><button className="primary" onClick={()=>{setPatients([{explored:[],called:false},{explored:[],called:false}]);localStorage.removeItem('ssh-manual');setDialog('');setToast('진행을 초기화했습니다.')}}>초기화</button></div></div>}{toast&&<div className="toast">{toast}</div>}</main>}
-function localizedTitle(w:Win,t:any,lang:Lang){const zh=lang==='zh';if(w.type==='detail')return `${t.patient} 0${(w.patient??0)+1}`;if(w.type==='log')return t.records;if(w.type==='flashback')return zh?'回忆片段':'기억의 장면';if(w.type==='call')return t.phone;if(w.type==='records')return t.record;if(w.type==='notes')return t.notes;if(w.type==='video')return t.video;if(w.type==='mine')return t.mine;if(w.type==='calc')return t.calc;if(w.type==='settings')return t.settings;if(w.type==='hidden'||w.type==='unlocked')return t.hidden;return w.title}
-function renderWindow(w:Win,c:any){const{t,patients,selected,setSelected,p,allDone,exploredCount,open,close,updatePatient,setToast,setLang,setSound,sound,lang,setDialog,dialog,setPatients,powerOff}=c;const n=w.patient??selected;const pp=patients[n];const startFlash=(word:string)=>open('flashback',n,word);switch(w.type){case'records':return <div className="finder archive-browser"><div className="toolbar"><button onClick={()=>close(w.id)} title={t.returnDesktop}>‹</button><span>SWEET HD / {t.record}</span><span className="spacer"/><span>▦　2 FILES</span></div><div className="finder-layout"><aside className="finder-sidebar"><small>FAVORITES</small>{[['records',t.record],['notes',t.notes],['video',t.video],['hidden',t.hidden],['settings',t.settings]].map(([type,label])=><button key={type} className={type==='records'?'active':''} onClick={()=>open(type)}><RetroIcon kind={type}/>{label}</button>)}<div className="disk-status"><HardDrive size={22}/><b>SWEET HD</b><small>LOCAL STORAGE</small><span/><small>2 archives · private</small></div></aside><div className="finder-main"><header className="archive-heading"><small>COUNSELING / ARCHIVE</small><h2>{t.record}</h2><p>{lang==='ko'?'기록 사이에 남겨진 마음의 조각들.':'留在记录之间的心情碎片。'}</p></header><div className="patient-list">{patients.map((patient:Patient,i:number)=><button className="patient-row" key={i} onClick={()=>{setSelected(i);open('detail',i)}}><span className="folder-large"><RetroIcon kind="records"/></span><span><b>{t.patient} 0{i+1}</b><small>{i===0?(lang==='ko'?'거울 · 통제 · 수치심':'镜子 · 控制 · 羞耻'):(lang==='ko'?'배고픔 · 관계 · 기억':'饥饿 · 关系 · 记忆')}</small></span><span className="row-status">{patient.called?'● 상담 완료':`${patient.explored.length}/3 탐색`}</span><ArrowRight size={15}/></button>)}</div><div className="archive-empty"><span>“</span><p>{lang==='ko'?'천천히 읽어도 괜찮습니다.':'可以慢慢地读。'}</p><small>EVERY STORY DESERVES A LITTLE TIME.</small></div></div></div><footer>최근 수정　　상담 기록은 데모용 허구 콘텐츠입니다.</footer></div>;
-case'detail':return <div className="finder detail"><div className="toolbar"><button onClick={()=>open('records')}>‹ {t.list}</button><span className="spacer"/><span>환자 0{n+1}</span></div><div className="profile"><div className="avatar">0{n+1}</div><div><h2>환자 0{n+1}</h2><p>상담 기록을 살펴보고 기억의 단서를 확인해 보세요.</p></div></div><div className="tags">{words[n].map((word,i)=><button className={pp.explored.includes(keys[n*3+i])?'done':''} key={word} onClick={()=>startFlash(keys[n*3+i])}>{word}{pp.explored.includes(keys[n*3+i])?' ✓':' ↗'}</button>)}</div><div className="info-card"><h3>간단한 기록 <span>PRIVATE / DEMO</span></h3><p>{n===0?'최근 기록에서 자신을 바라보는 방식과 통제감에 대한 표현이 반복되었습니다.':'식사와 주변 관계에 관한 기억이 짧게 언급되었습니다.'}</p><button className="text-action" onClick={()=>open('log',n)}><FileText size={15}/> 상담 기록 보기 <ArrowRight size={14}/></button></div><div className="profile-actions"><button className="primary" onClick={()=>open('call',n)}><Phone size={15}/> 전화 회상</button><span>{pp.called?'회상 기록을 남겼습니다.':'탐색한 단서에 따라 대화가 달라집니다.'}</span></div></div>;
-case'log':return <div className="finder log"><div className="toolbar"><button onClick={()=>open('detail',n)}>‹ 환자 0{n+1}</button><span className="spacer"/><span>기록 {n+1}-0{n+1}</span></div><div className="paper"><small>상담 메모 · 비공개 데모</small><h2>짧은 기록</h2><p>“요즘은 어떤 순간에 마음이 조금 복잡해지나요?”</p><p>{n===0?'“거울을 볼 때마다 생각이 많아져요. 모든 걸 통제해야 안심이 되는 것 같아요.”':'“배고픔을 느끼면 여러 생각이 들어요. 사람들과의 관계에서도 비슷한 감정이 있어요.”'}</p><p>아래 단어를 눌러 관련된 기억 장면을 열어 볼 수 있습니다.</p><div className="keywords">{words[n].map((word,i)=><button className={pp.explored.includes(keys[n*3+i])?'done':''} key={word} onClick={()=>startFlash(keys[n*3+i])}>{word}{pp.explored.includes(keys[n*3+i])?' ✓':''}</button>)}</div></div><footer><button onClick={()=>open('detail',n)}>‹ {t.backRecords}</button>　{pp.explored.length}/3 탐색</footer></div>;
-case'flashback':return <div className="flashback"><div className="scene"><div className="scene-window"/><div className="scene-silhouette"><i/><b/></div><span className="scene-caption">기억의 조각　·　{words[n][keys.indexOf(w.word!)-n*3]}</span></div><div className="dialogue"><small>나의 기억</small><p>{n===0?'창가의 빛이 거울 가장자리를 따라 천천히 움직였다. 그때의 나는 잠시 시선을 돌렸다.':'조용한 방 안에서 익숙한 목소리가 들렸다. 대답을 서두르지 않아도 괜찮았다.'}</p><div><button onClick={()=>{updatePatient(n,(x:Patient)=>({...x,explored:Array.from(new Set([...x.explored,w.word!]))}));close(w.id);setToast('기억 조각을 기록했습니다.')}} className="primary">기억을 기록하고 닫기 <ArrowRight size={14}/></button><button onClick={()=>{updatePatient(n,(x:Patient)=>({...x,explored:Array.from(new Set([...x.explored,w.word!]))}));close(w.id);open('log',n)}}>기록으로 돌아가기</button></div></div></div>;
-case'call':return pp.explored.length<3?<div className="phone"><div className="phone-icon"><Phone/></div><h2>연결 중…</h2><div className="call-bubble">“선생님, 죄송해요. 지금은 이야기하기 조금 어려울 것 같아요.”</div><p>아직 살펴보지 않은 기록이 있습니다. 기록을 더 확인한 뒤 다시 연결해 보세요.</p><button className="danger" onClick={()=>close(w.id)}>통화 종료</button></div>:<div className="phone"><div className="phone-icon"><Phone/></div><h2>환자 0{n+1}　연결됨</h2><p>“기록을 천천히 살펴보셨군요. 지금은 어떤 생각이 드세요?”</p><div className="answer-list">{['그때의 마음을 더 듣고 싶어요.','그 기억이 지금과 어떻게 이어지는지 궁금해요.','지금 이야기해 준 것에 고마워요.'].map((a,i)=><button key={i} onClick={()=>{setDialog(`answer${i}`);updatePatient(n,(x:Patient)=>({...x,called:true}))}}>{a}</button>)}</div>{dialog.startsWith('answer')&&<div className="response"><Check size={16}/><span>{['“조금 더 생각해 볼 수 있을 것 같아요.”','“아직 잘 모르겠지만, 천천히 이야기할게요.”','“들어줘서 고마워요.”'][Number(dialog.slice(-1))]}</span></div>}<button className="primary" onClick={()=>{setDialog('');close(w.id)}}>{dialog.startsWith('answer')?'통화를 마치고 돌아가기':'대화 닫기'}</button></div>;
-case'hidden':return <div className="hidden-state"><div className="folder-large">{allDone?<Folder/>:<Lock/>}</div><h2>{allDone?'폴더가 열렸습니다':'잠겨 있는 폴더'}</h2>{allDone?<><p>두 사람의 기록과 대화를 모두 살펴보았습니다.</p><button className="file-entry" onClick={()=>open('unlocked',undefined,undefined,'memo')}>▤　개인 메모 — 01　 <ArrowRight size={14}/></button><button className="file-entry" onClick={()=>open('unlocked',undefined,undefined,'letter')}>▤　보내지 않은 편지　 <ArrowRight size={14}/></button><button className="primary" onClick={()=>close(w.id)}>{t.returnDesktop}</button></>:<><p>두 환자의 탐색과 전화 회상을 마치면 열립니다.</p><div className="unlock-progress"><span>환자 기록 진행</span><b>{patients.filter((x:Patient)=>x.called&&x.explored.length>=3).length}/2</b><div><i style={{width:`${patients.filter((x:Patient)=>x.called&&x.explored.length>=3).length*50}%`}}/></div></div><button onClick={()=>close(w.id)} className="primary">{t.returnDesktop}</button></>}</div>;
-case'unlocked':return <div className="paper"><small>개인 기록 · 날짜 미상</small><h2>{w.note==='memo'?'개인 메모 — 01':'보내지 않은 편지'}</h2><p>“누군가의 이야기를 듣는 동안, 나 자신의 조용한 마음도 조금씩 들리기 시작했다.”</p><button onClick={()=>close(w.id)}>닫기</button></div>;
-case'settings':return <div className="settings"><div className="settings-badge"><RetroIcon kind="settings"/><small>SWEET OS · SYSTEM PREFERENCES</small></div><h2>{lang==='ko'?'시스템 설정':'系统设置'}</h2><section><div><b>언어 / Language</b><small>화면에 사용할 언어를 선택합니다.</small></div><button onClick={()=>{setLang(lang==='ko'?'zh':'ko');setToast(lang==='ko'?'语言已切换':'언어를 변경했습니다.')}}>{lang==='ko'?'한국어　↔　中文':'中文　↔　한국어'}</button></section><section><div><b>{t.sound}</b><small>기본적으로 소리는 재생되지 않습니다.</small></div><button onClick={()=>{setSound(!sound);setToast(sound?'효과음을 끕니다.':'효과음을 켰습니다.')}}>{sound?<Volume2/>:<VolumeX/>}{sound?'켜짐':'꺼짐'}</button></section><section><div><b>수동 저장</b><small>현재 언어와 탐색 진행을 저장합니다.</small></div><button onClick={()=>{localStorage.setItem('ssh-manual',JSON.stringify({patients,lang,sound}));setToast(t.saved)}}><Save size={15}/>{t.save}</button></section><section><div><b>수동 불러오기</b><small>{localStorage.getItem('ssh-manual')?'마지막 수동 저장을 복원합니다.':t.noSave}</small></div><button disabled={!localStorage.getItem('ssh-manual')} onClick={()=>{const s=JSON.parse(localStorage.getItem('ssh-manual')||'{}');if(s.patients)setPatients(s.patients);if(s.lang)setLang(s.lang);if(s.sound!==undefined)setSound(s.sound);setToast(t.loaded)}}><Download size={15}/>{t.load}</button></section><section><div><b>진행 초기화</b><small>탐색 기록과 수동 저장을 지웁니다.</small></div><button className="danger" onClick={()=>setDialog('reset')}>{t.reset}</button></section><section className="power-section"><div><b>{lang==='ko'?'전원':'电源'}</b><small>{lang==='ko'?'진행을 유지하고 상담실로 돌아갑니다.':'保留进度并返回房间。'}</small></div><button onClick={powerOff}><Power size={16}/>{lang==='ko'?'전원 끄기':'关闭电源'}</button></section></div>;
-case'notes':return <div className="note-stack">{[{title:'짧은 메모',text:'회의실 열쇠는 서랍 안에. 창문을 열어 환기하기.'},{title:'상담실 체크리스트',text:'□ 기록 정리하기\n□ 따뜻한 차 준비\n□ 오늘은 조금 일찍 퇴근'}].map((x,i)=><article key={i} className="sticky"><b>{x.title}</b><p>{x.text}</p><small>메모 {i+1} · 로컬</small></article>)}</div>;
-case'video':return <VideoApp/>;case'mine':return <Minesweeper/>;case'calc':return <CalculatorApp/>;default:return <div className="empty"><FileText/><p>이 항목을 열 수 없습니다.</p><button onClick={()=>close(w.id)}>닫기</button></div>}}
-function VideoApp(){const [idx,setIdx]=useState(0),[playing,setPlaying]=useState(false);const vids=['비 오는 창가','책상 위의 오후','느린 파도'];return <div className="videoapp"><div className="player"><div className="playmark">{playing?'Ⅱ':<Play/>}</div><span>{vids[idx]}</span><button onClick={()=>setPlaying(!playing)}>{playing?'일시 정지':'재생'}</button><div className="timeline"><i style={{width:playing?'42%':'12%'}}/></div></div><h3>최근 항목</h3>{vids.map((v,i)=><button className="video-row" key={v} onClick={()=>{setIdx(i);setPlaying(true)}}><span>▶</span>{v}<small>로컬 영상 · {['02:14','04:08','01:36'][i]}</small></button>)}</div>}
-function Minesweeper(){const N=8,M=10;const [seed,setSeed]=useState(0),[flags,setFlags]=useState<number[]>([]),[opened,setOpened]=useState<number[]>([]),[over,setOver]=useState(false);const bombs=new Set(Array.from({length:M},(_,i)=>(i*13+seed*7+9)%64));const count=(k:number)=>{let r=Math.floor(k/N),c=k%N,n=0;for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++)if(bombs.has((r+dr)*N+c+dc)&&r+dr>=0&&r+dr<N&&c+dc>=0&&c+dc<N)n++;return n};function restart(){setSeed(seed+1);setFlags([]);setOpened([]);setOver(false)}return <div className="mines"><div className="minehead"><span>⚑ {flags.length}</span><b>{over?'종료':'지뢰찾기'}</b><button onClick={restart}><RotateCcw size={16}/></button></div><div className="grid">{Array.from({length:64},(_,k)=>{const hit=opened.includes(k),flag=flags.includes(k);return <button key={k} className={hit?'open-cell':''} onContextMenu={e=>{e.preventDefault();if(!hit)setFlags(flags.includes(k)?flags.filter(x=>x!==k):[...flags,k])}} onClick={()=>{if(over||flag)return;if(bombs.has(k)){setOpened([...opened,k]);setOver(true)}else{setOpened([...opened,k]);if(opened.length>=64-M)setOver(true)}}}>{flag?'⚑':hit?(bombs.has(k)?'✹':count(k)||''):''}</button>})}</div><p>좌클릭으로 열기 · 우클릭으로 깃발 표시</p><button className="primary" onClick={restart}>다시 시작</button></div>}
-function CalculatorApp(){const [display,setDisplay]=useState('0'),[stored,setStored]=useState<number|null>(null),[op,setOp]=useState(''),[fresh,setFresh]=useState(true);function press(k:string){if(/[0-9.]/.test(k)){setDisplay(fresh?(k==='.'?'0.':k):display==='0'&&k!=='.'?k:display+k);setFresh(false);return}if(k==='C'){setDisplay('0');setStored(null);setOp('');setFresh(true);return}if(k==='='){if(stored===null||!op)return;const a=stored,b=Number(display),v=op==='+'?a+b:op==='−'?a-b:op==='×'?a*b:op==='÷'?(b===0?NaN:a/b):b;setDisplay(Number.isFinite(v)?String(Number(v.toFixed(8))):'오류');setStored(null);setOp('');setFresh(true);return}setStored(Number(display));setOp(k);setFresh(true)}return <div className="calculator"><div className="calc-display">{display}</div><div className="calc-keys">{['C','±','%','÷','7','8','9','×','4','5','6','−','1','2','3','+','0','.','='].map(k=><button className={['÷','×','−','+','='].includes(k)?'operator':''} key={k} onClick={()=>press(k)}>{k}</button>)}</div></div>}
+type Frame = { key: WindowKey; x: number; y: number; order: number; minimized: boolean; expanded: boolean };
+type Drag = { key: WindowKey; pointer: number; startX: number; startY: number; x: number; y: number };
 
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+function App() {
+  const [phase, setPhase] = useState<'room' | 'boot' | 'desktop'>('room');
+  const [prefs, setPrefs] = useState(() => readPreferences(storage.read('ssh-pref')));
+  const [progress, setProgress] = useState(() => readProgress(storage.read('ssh-progress')) ?? emptyProgress());
+  const [manual, setManual] = useState(readSave);
+  const [frames, setFrames] = useState<Frame[]>([]);
+  const [scene, setScene] = useState<SceneKey | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [toast, setToast] = useState<Text | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  const stack = useRef(0);
+  const drag = useRef<Drag | null>(null);
+  const pendingFocus = useRef<WindowKey | null>(null);
+  const sceneReturn = useRef<HTMLElement | null>(null);
+  const roomFocus = useRef(false);
+  const room = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const sendReset = useRef<HTMLButtonElement>(null);
+  const resetReturn = useRef<HTMLElement | null>(null);
+  const audio = useRef<AudioContext | null>(null);
+  const { lang, sound } = prefs;
+  const l = (text: Text) => local(text, lang);
+  const title = (key: WindowKey) => l(titles[key]);
+  const active = frames.filter(frame => !frame.minimized).sort((a, b) => b.order - a.order)[0]?.key;
+  const locked = !progress.patients.every(patient => patient.called);
+
+  useEffect(() => {
+    document.documentElement.lang = lang === 'ko' ? 'ko' : 'zh-Hans';
+    storage.write('ssh-pref', prefs);
+  }, [prefs, lang]);
+  useEffect(() => { storage.write('ssh-progress', progress); }, [progress]);
+  useEffect(() => {
+    const update = window.setInterval(() => setNow(new Date()), 10_000);
+    return () => window.clearInterval(update);
+  }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 3300);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+  useEffect(() => {
+    if (phase !== 'boot') return;
+    const timer = window.setTimeout(() => setPhase('desktop'),
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 240);
+    return () => window.clearTimeout(timer);
+  }, [phase]);
+  useEffect(() => {
+    if (phase === 'room' && roomFocus.current) {
+      room.current?.querySelector('button')?.focus();
+      roomFocus.current = false;
+    } else if (phase === 'desktop') {
+      stage.current?.querySelector<HTMLButtonElement>('.desktop-icon')?.focus();
+    }
+  }, [phase]);
+  useEffect(() => {
+    if (!pendingFocus.current) return;
+    stage.current?.querySelector<HTMLElement>(`[data-title="${pendingFocus.current}"]`)?.focus();
+    pendingFocus.current = null;
+  }, [frames]);
+  useEffect(() => {
+    if (!scene && sceneReturn.current) {
+      sceneReturn.current.focus();
+      sceneReturn.current = null;
+    }
+  }, [scene]);
+  useEffect(() => {
+    if (resetOpen) sendReset.current?.focus();
+    else if (resetReturn.current) {
+      resetReturn.current.focus();
+      resetReturn.current = null;
+    }
+  }, [resetOpen]);
+
+  function chime(enabled = sound) {
+    if (!enabled || !window.AudioContext) return;
+    try {
+      const context = audio.current ??= new AudioContext();
+      if (context.state === 'suspended') void context.resume().catch(() => {});
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const time = context.currentTime;
+      oscillator.frequency.setValueAtTime(560, time);
+      gain.gain.setValueAtTime(0.045, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(time);
+      oscillator.stop(time + 0.1);
+    } catch {
+      // Playback is optional and may be blocked by the browser.
+    }
+  }
+
+  function open(key: WindowKey) {
+    chime();
+    pendingFocus.current = key;
+    const order = ++stack.current;
+    setFrames(current => {
+      if (current.some(frame => frame.key === key)) {
+        return current.map(frame => frame.key === key ? { ...frame, order, minimized: false } : frame);
+      }
+      const offset = current.length % 5 * 24;
+      return [...current, { key, x: 26 + offset, y: 32 + offset, order, minimized: false, expanded: false }];
+    });
+  }
+
+  function patch(key: WindowKey, change: Partial<Frame>) {
+    setFrames(current => current.map(frame => frame.key === key ? { ...frame, ...change } : frame));
+  }
+
+  function close(key: WindowKey) {
+    if (drag.current?.key === key) drag.current = null;
+    setFrames(current => current.filter(frame => frame.key !== key));
+    if (key === active) focusRemaining(key);
+  }
+
+  function focusRemaining(key: WindowKey) {
+    const next = frames.filter(frame => frame.key !== key && !frame.minimized).sort((a, b) => b.order - a.order)[0];
+    if (next) pendingFocus.current = next.key;
+    else (stage.current?.querySelector<HTMLButtonElement>(`[data-app="${key}"]`) ??
+      stage.current?.querySelector<HTMLButtonElement>('.desktop-icon'))?.focus();
+  }
+
+  function beginDrag(event: PointerEvent<HTMLElement>, frame: Frame) {
+    if (event.button !== 0 || (event.target as HTMLElement).closest('button') ||
+      frame.expanded || window.matchMedia('(max-width: 680px)').matches) return;
+    const bounds = event.currentTarget.parentElement!.getBoundingClientRect();
+    const board = stage.current!.getBoundingClientRect();
+    drag.current = { key: frame.key, pointer: event.pointerId, startX: event.clientX, startY: event.clientY,
+      x: bounds.left - board.left, y: bounds.top - board.top };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function moveDrag(event: PointerEvent<HTMLElement>) {
+    const current = drag.current;
+    if (!current || current.pointer !== event.pointerId) return;
+    const board = stage.current!.getBoundingClientRect();
+    const panel = event.currentTarget.parentElement!.getBoundingClientRect();
+    patch(current.key, {
+      x: Math.min(Math.max(0, board.width - panel.width - 8), Math.max(8, current.x + event.clientX - current.startX)),
+      y: Math.min(Math.max(0, board.height - panel.height - 8), Math.max(8, current.y + event.clientY - current.startY)),
+    });
+  }
+
+  function powerOff() {
+    chime();
+    setScene(null);
+    setResetOpen(false);
+    setToast(null);
+    setFrames([]);
+    drag.current = null;
+    pendingFocus.current = null;
+    sceneReturn.current = null;
+    resetReturn.current = null;
+    stack.current = 0;
+    roomFocus.current = true;
+    setPhase('room');
+  }
+
+  function play(next: SceneKey) {
+    chime();
+    sceneReturn.current = document.activeElement as HTMLElement | null;
+    setScene(next);
+  }
+
+  function completeScene(completed: SceneKey) {
+    setProgress(current => {
+      if (completed.kind === 'ending') return { ...current, ending: true };
+      return {
+        ...current,
+        patients: current.patients.map((patient, index) => {
+          if (index !== completed.patient) return patient;
+          return completed.kind === 'call' ? { ...patient, called: true } :
+            { ...patient, explored: [...new Set([...patient.explored, completed.id])] };
+        }),
+      };
+    });
+    if (completed.kind === 'call' && progress.patients[1 - completed.patient].called) {
+      setToast(['숨겨진 폴더가 열렸습니다.', '隐藏文件夹已解锁。']);
+    }
+  }
+
+  function save() {
+    const next = { ...prefs, ...progress };
+    if (storage.write('ssh-manual', next)) {
+      setManual(next);
+      setToast(['진행을 저장했습니다.', '进度已保存。']);
+    } else setToast(['이 브라우저에서 저장할 수 없습니다.', '当前浏览器无法保存进度。']);
+  }
+
+  function load() {
+    if (!manual) return;
+    setPrefs({ lang: manual.lang, sound: manual.sound });
+    setProgress({ patients: manual.patients, ending: manual.ending });
+    setFrames(current => current.filter(frame => frame.key !== 'memo' && frame.key !== 'letter'));
+    setToast(['저장된 진행을 불러왔습니다.', '已读取存档。']);
+  }
+
+  function reset() {
+    if (!storage.remove('ssh-manual')) {
+      setResetOpen(false);
+      setToast(['이 브라우저에서 저장을 지울 수 없습니다.', '当前浏览器无法删除存档。']);
+      return;
+    }
+    setProgress(emptyProgress());
+    setManual(null);
+    setFrames(current => current.filter(frame => frame.key !== 'memo' && frame.key !== 'letter'));
+    setResetOpen(false);
+    setToast(['진행을 초기화했습니다.', '游戏进度已重置。']);
+  }
+
+  useEffect(() => {
+    if (phase !== 'desktop') return;
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (resetOpen) setResetOpen(false);
+      else if (scene) setScene(null);
+      else if (active) close(active);
+    };
+    window.addEventListener('keydown', keyDown);
+    return () => window.removeEventListener('keydown', keyDown);
+  });
+
+  function settings() {
+    return <div className="panel preferences">
+      <h2>{l(['시스템 설정', '系统设置'])}</h2>
+      <section>
+        <div><h3>{l(['언어', '语言'])}</h3></div>
+        <div className="language-options">{(['ko', 'zh'] as const).map(option =>
+          <button key={option} aria-pressed={option === lang} onClick={() => setPrefs(current => ({ ...current, lang: option }))}>
+            {option === 'ko' ? '한국어' : '中文'}
+          </button>)}</div>
+      </section>
+      <section>
+        <div><h3>{l(['효과음', '音效'])}</h3></div>
+        <button aria-pressed={sound} onClick={() => { setPrefs(current => ({ ...current, sound: !sound })); chime(!sound); }}>
+          {l(sound ? ['켜짐', '开启'] : ['꺼짐', '关闭'])}
+        </button>
+      </section>
+      <section>
+        <div><h3>{l(['진행 저장', '游戏存档'])}</h3><p>{l(['이 브라우저에 수동 저장을 남깁니다.', '进度保存在当前浏览器。'])}</p></div>
+        <div className="language-options">
+          <button onClick={save}>{l(['저장', '保存进度'])}</button>
+          <button onClick={load} disabled={!manual}>{l(['불러오기', '读取存档'])}</button>
+        </div>
+      </section>
+      <section>
+        <div><h3>{l(['진행 초기화', '重置进度'])}</h3></div>
+        <button onClick={event => { resetReturn.current = event.currentTarget; setResetOpen(true); }}>
+          {l(['초기화', '重置'])}
+        </button>
+      </section>
+      <section className="power-controls">
+        <div><h3>{l(['전원', '电源'])}</h3><p>{l(['진행을 유지하고 방으로 돌아갑니다.', '保留探索进度，返回初始房间。'])}</p></div>
+        <button className="primary" onClick={powerOff}><Power size={16}/>{l(['전원 끄기', '关闭电源'])}</button>
+      </section>
+    </div>;
+  }
+
+  function contents(key: WindowKey) {
+    switch (key) {
+      case 'records': return <Records {...{ lang, progress, open }}/>;
+      case 'case-0': case 'case-1':
+        return <PatientRecord index={key === 'case-0' ? 0 : 1} {...{ lang, progress, open, play }}/>;
+      case 'notes': return <Notes {...{ lang, open }}/>;
+      case 'hidden': return <Hidden {...{ lang, progress, open }}/>;
+      case 'memo': case 'letter': return <PersonalFile file={key} {...{ lang, progress, play }}/>;
+      case 'video': return <VideoApp lang={lang}/>;
+      case 'mine': return <Minesweeper lang={lang}/>;
+      case 'calc': return <CalculatorApp lang={lang}/>;
+      case 'settings': return settings();
+    }
+  }
+
+  function icon(key: AppId) {
+    return <span className="desktop-icon-art">
+      <RetroIcon kind={key === 'hidden' && !locked ? 'records' : key}/>
+      {key === 'hidden' && locked && <FolderLock className="lock-mark" size={14} aria-hidden="true"/>}
+    </span>;
+  }
+
+  if (phase !== 'desktop') return <div ref={room}>
+    <Room lang={lang} starting={phase === 'boot'} onStart={() => { chime(); setToast(null); setPhase('boot'); }}
+      onCake={() => { chime(); setToast(['접시 밑에 날짜가 적혀 있다. 11월 6일.', '盘子底下写着一个日期。11 月 6 日。']); }}
+      notice={toast ? l(toast) : ''}/>
+  </div>;
+
+  return <>
+    <main className="sweet-desktop" inert={!!scene || resetOpen}>
+      <header className="os-bar">
+        <span className="os-name"><span className="os-mark">S</span> Sweet OS</span>
+        <button onClick={() => open('records')}>{title('records')}</button>
+        <button onClick={() => open('settings')}>{title('settings')}</button>
+        <span className="os-clock"><Clock3 size={15}/>{now.toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'zh-CN',
+          { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+      </header>
+      <div className="desktop-wall" aria-hidden="true"><i/><b/><span/></div>
+      <div className="desktop-area" ref={stage}>
+        <div className="desktop-icons-grid">
+          {apps.map(key => <button className="desktop-icon" data-app={key} key={key} onClick={() => open(key)}>
+            {icon(key)}<span>{title(key)}</span>
+          </button>)}
+        </div>
+        <div className="desktop-inscription"><strong>Sweet OS</strong><span>SWEET HD</span></div>
+        {frames.map(frame => <section key={frame.key} hidden={frame.minimized}
+          className={`app-window ${active === frame.key ? 'active' : ''} ${frame.expanded ? 'expanded' : ''}`}
+          aria-labelledby={`title-${frame.key}`}
+          style={{ '--window-x': `${frame.x}px`, '--window-y': `${frame.y}px`, zIndex: frame.order } as CSSProperties}
+          onPointerDown={() => { if (active !== frame.key) patch(frame.key, { order: ++stack.current }); }}
+          onFocus={() => { if (active !== frame.key) patch(frame.key, { order: ++stack.current }); }}>
+          <div className="window-bar" onPointerDown={event => beginDrag(event, frame)} onPointerMove={moveDrag}
+            onPointerUp={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}>
+            <div className="window-tools">
+              <button className="close-dot" onClick={() => close(frame.key)} aria-label={l(['창 닫기', '关闭窗口'])}><X size={12}/></button>
+              <button className="min-dot" onClick={() => { patch(frame.key, { minimized: true }); focusRemaining(frame.key); }}
+                aria-label={l(['최소화', '最小化'])}><Minus size={12}/></button>
+              <button className="max-dot" onClick={() => patch(frame.key, { expanded: !frame.expanded })}
+                aria-label={l(frame.expanded ? ['창 크기 복원', '恢复窗口大小'] : ['창 확대', '放大窗口'])}><Square size={9}/></button>
+            </div>
+            <h2 id={`title-${frame.key}`} data-title={frame.key} tabIndex={-1}>{title(frame.key)}</h2>
+          </div>
+          <div className="window-content">{contents(frame.key)}</div>
+        </section>)}
+      </div>
+      <nav className="sweet-dock" aria-label={l(['응용 프로그램', '应用程序'])}>
+        {apps.map(key => <button key={key} onClick={() => open(key)} title={title(key)} aria-label={title(key)}
+          className={frames.some(frame => frame.key === key || (key === 'records' && frame.key.startsWith('case-'))) ? 'running' : ''}>
+          {icon(key)}
+        </button>)}
+      </nav>
+    </main>
+    {scene && <Novel scene={scene} lang={lang} onBack={() => setScene(null)} onComplete={() => completeScene(scene)} chime={chime}/>}
+    {resetOpen && <div className="reset-backdrop">
+      <section role="alertdialog" aria-modal="true" aria-labelledby="reset-title" className="reset-dialog">
+        <h2 id="reset-title">{l(['진행을 초기화할까요?', '重置游戏进度？'])}</h2>
+        <p>{l(['탐색한 단서와 수동 저장이 지워집니다.', '已探索的线索和手动存档都会清除。'])}</p>
+        <div><button ref={sendReset} onClick={() => setResetOpen(false)}>{l(['취소', '取消'])}</button>
+          <button className="primary" onClick={reset}>{l(['초기화', '重置'])}</button></div>
+      </section>
+    </div>}
+    {toast && !scene && <div className="system-toast" role="status">{l(toast)}</div>}
+  </>;
+}
+
+createRoot(document.getElementById('root')!).render(<StrictMode><App/></StrictMode>);
