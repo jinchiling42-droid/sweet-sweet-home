@@ -1,13 +1,11 @@
 import { FileText, FolderLock, Phone } from 'lucide-react';
-import { local, memoryIds, type Lang, type Progress, type Text } from './game';
+import { local, memoryIds, type Lang, type Progress, type SceneKey, type Text } from './game';
 import { memories } from './story';
 import { RetroIcon } from './visuals';
 
-export const apps = ['records', 'notes', 'video', 'mine', 'calc', 'settings', 'hidden'] as const;
+export const apps = ['records', 'notes', 'video', 'mine', 'calc', 'ipod', 'settings', 'hidden'] as const;
 export type AppId = typeof apps[number];
 export type WindowKey = AppId | 'case-0' | 'case-1' | 'memo' | 'letter';
-export type SceneKey = { kind: 'memory'; patient: number; id: string } |
-  { kind: 'call'; patient: number } | { kind: 'ending' };
 
 export const titles: Record<WindowKey, Text> = {
   records: ['환자 기록', '患者档案'],
@@ -15,6 +13,7 @@ export const titles: Record<WindowKey, Text> = {
   video: ['비디오', '视频'],
   mine: ['지뢰찾기', '扫雷'],
   calc: ['계산기', '计算器'],
+  ipod: ['iPod', 'iPod'],
   settings: ['설정', '设置'],
   hidden: ['숨겨진 폴더', '隐藏文件夹'],
   'case-0': ['환자 01', '患者 01'],

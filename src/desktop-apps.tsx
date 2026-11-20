@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Play, RotateCcw } from 'lucide-react';
-import type { Lang } from './game';
+import { Pause, Play, RotateCcw, Volume2 } from 'lucide-react';
+import { local, type Lang, type Preferences, type Text } from './game';
 
 export function VideoApp({ lang }: { lang: Lang }) {
   const [idx, setIdx] = useState(0),
@@ -245,4 +245,38 @@ export function CalculatorApp({ lang }: { lang: Lang }) {
       </div>
     </div>
   );
+}
+
+
+const ipodVolumes = [
+  { key: 'musicVolume', label: ['음악 음량', '音乐音量'] as Text },
+  { key: 'effectsVolume', label: ['효과음 음량', '音效音量'] as Text },
+] as const;
+
+export function IPod({ prefs, playing, onToggle, onVolume, onTest }: {
+  prefs: Preferences;
+  playing: boolean;
+  onToggle: () => void;
+  onVolume: (key: typeof ipodVolumes[number]['key'], value: number) => void;
+  onTest: () => void;
+}) {
+  const { lang } = prefs;
+  return <div className="panel ipod-panel">
+    <div className="ipod-screen">
+      <div><h3>{local(['임시 배경음악', '临时背景音乐'], lang)}</h3><p>Sweet Sweet Home</p></div>
+      <button className="primary" onClick={onToggle}>
+        {playing ? <Pause size={16}/> : <Play size={16}/>}
+        {local(playing ? ['일시 정지', '暂停音乐'] : ['재생', '播放音乐'], lang)}
+      </button>
+    </div>
+    {ipodVolumes.map(({ key, label }) => <label className="ipod-volume" key={key}>
+      <span>{local(label, lang)}</span>
+      <span className="ipod-volume-value" aria-hidden="true">{prefs[key]}%</span>
+      <input type="range" min={0} max={100} value={prefs[key]} aria-label={local(label, lang)}
+        onChange={event => onVolume(key, event.currentTarget.valueAsNumber)}/>
+    </label>)}
+    <button className="subtle" onClick={onTest} disabled={prefs.effectsVolume === 0}>
+      <Volume2 size={16}/>{local(['효과음 미리 듣기', '试听音效'], lang)}
+    </button>
+  </div>;
 }

@@ -191,12 +191,46 @@ h2, h3, p { overflow-wrap: anywhere; }
 .reset-dialog p { line-height: 1.65; }
 .reset-dialog > div { display: flex; justify-content: flex-end; gap: .5rem; }
 
-.novel { height: 100dvh; display: grid; grid-template-rows: auto minmax(110px, 1fr) auto; overflow: auto; background: #ced8e0; }
-.novel-header { display: grid; grid-template-columns: 1fr 2fr 1fr; align-items: center; padding: .65rem clamp(.6rem, 3vw, 2rem); background: #e9eff3; border-bottom: 1px solid #8093a4; gap: .5rem; }
-.novel-header button { justify-self: start; }
-.novel-header span { justify-self: end; font-size: .8rem; font-family: monospace; }
-.novel-header h1 { text-align: center; font-size: clamp(.95rem, 3.5vw, 1.3rem); margin: 0; line-height: 1.25; }
-.novel-header h1:focus { outline: none; }
+.sweet-desktop[hidden] { display: none; }
+
+.novel {
+  position: fixed; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden; background: #ced8e0;
+}
+.novel-header {
+  display: flex; align-items: center; padding: .5rem clamp(.6rem, 3vw, 2rem);
+  background: #e9eff3; border-bottom: 1px solid #8093a4;
+}
+.novel-title {
+  position: absolute; width: 1px; height: 1px; clip-path: inset(50%);
+  overflow: hidden; white-space: nowrap; margin: 0;
+}
+.novel-settings {
+  width: min(31rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); margin: auto;
+  color: var(--ink); background: #f4f8fa; border: 1px solid #526b81; border-radius: 7px;
+  box-shadow: 5px 6px #31465dbd;
+}
+.novel-settings::backdrop { background: #263b4d86; }
+.novel-settings-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .45rem;
+}
+.novel-settings-header h2 { font-size: 1.35rem; margin: 0; }
+.novel-settings .novel-settings-actions { border-bottom: 0; flex-wrap: wrap; }
+.novel-settings .novel-settings-status { font-size: .84rem; margin: 0; }
+.novel ~ .system-toast { top: 4rem; bottom: auto; }
+
+.ipod-panel { display: grid; gap: 1.15rem; max-width: 32rem; margin: 0 auto; }
+.ipod-screen {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .65rem;
+  background: #d3e2ec; border: 1px solid #768ea1; border-radius: 6px; padding: .9rem;
+  box-shadow: inset 0 1px 3px #60788b33;
+}
+.ipod-screen h3, .ipod-screen p { margin: 0; }
+.ipod-screen p { font-size: .84rem; }
+.ipod-volume { display: grid; gap: .4rem .8rem; grid-template-columns: 1fr auto; align-items: center; }
+.ipod-volume-value { font: .85rem ui-monospace, monospace; }
+.ipod-volume input { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: #48657e; }
+.ipod-panel > button { justify-self: start; }
 .memory-art {
   --wall-color: #9fb1c0;
   --object-color: #b6c5ce;
@@ -245,14 +279,16 @@ h2, h3, p { overflow-wrap: anywhere; }
 .motif-call .memory-object i, .motif-call .memory-object b { background: #aabcc9; border: 2px solid #435f74; border-radius: 23% 23% 16% 16%; width: 22%; position: absolute; top: -28%; height: 111%; }
 .motif-call .memory-object b { right: 0; }
 .novel-dialogue {
-  min-height: clamp(170px, 27dvh, 240px); color: #253b50; background: #ecf0f2;
+  color: #253b50; background: #ecf0f2;
   border-top: 1px solid #64798b; box-shadow: inset 0 4px #d7e1e9;
   padding: clamp(.9rem, 3vw, 1.75rem) max(5%, calc((100% - 1040px)/2));
-  display: grid; align-content: space-between; gap: .6rem;
+  display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: .6rem;
+  max-height: min(64dvh, calc(100dvh - 3.75rem)); min-height: min(170px, 45dvh);
 }
+.novel-dialogue > [aria-live] { overflow-y: auto; overscroll-behavior: contain; }
 .novel-dialogue p { font-family: Georgia, "Noto Serif CJK KR", "Noto Serif CJK SC", serif; font-size: clamp(1rem, 2.25vw, 1.45rem); line-height: 1.65; margin: .45rem 0; }
 .speaker { font-size: .86rem; font-weight: 650; color: #3d5d77; }
-.novel-controls { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .5rem; }
+.novel-controls { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .5rem; max-height: 35dvh; overflow-y: auto; padding: 3px; }
 .player::before { content: ""; position: absolute; inset: 0; opacity: .35; pointer-events: none; background: repeating-linear-gradient(110deg, transparent 0 13px, #c9e0f7 14px 15px, transparent 16px 27px); background-size: 120px 120px; animation: local-film 3s linear infinite paused; }
 .player.film-1::before { background: radial-gradient(ellipse at 60% 40%, #fff5d3, transparent 50%); }
 .player.film-2::before { background-image: repeating-radial-gradient(ellipse at 45% 120%, #e4edf5 0 2px, transparent 3px 12px); }

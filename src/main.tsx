@@ -2,13 +2,14 @@ import { StrictMode, useEffect, useRef, useState, type CSSProperties, type Point
 import { createRoot } from 'react-dom/client';
 import { Clock3, FolderLock, Minus, Power, Square, X } from 'lucide-react';
 import {
-  apps, Hidden, Notes, PatientRecord, PersonalFile, Records, titles, type AppId, type SceneKey, type WindowKey,
+  apps, Hidden, Notes, PatientRecord, PersonalFile, Records, titles, type AppId, type WindowKey,
 } from './archive';
-import { CalculatorApp, Minesweeper, VideoApp } from './desktop-apps';
+import { CalculatorApp, IPod, Minesweeper, VideoApp } from './desktop-apps';
 import {
-  emptyProgress, local, readPreferences, readProgress, readSave, storage, type Lang, type Text,
+  emptyProgress, local, readPreferences, readProgress, readSave, storage, type NovelPosition, type SceneKey, type Text,
 } from './game';
 import { Novel } from './novel';
+import ipodPreview from './assets/ipod-preview.mp3';
 import { RetroIcon, Room } from './visuals';
 import './style.css';
 import './retro.css';
@@ -23,7 +24,8 @@ function App() {
   const [progress, setProgress] = useState(() => readProgress(storage.read('ssh-progress')) ?? emptyProgress());
   const [manual, setManual] = useState(readSave);
   const [frames, setFrames] = useState<Frame[]>([]);
-  const [scene, setScene] = useState<SceneKey | null>(null);
+  const [novel, setNovel] = useState<NovelPosition | null>(null);
+  const [playing, setPlaying] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [toast, setToast] = useState<Text | null>(null);
   const [now, setNow] = useState(() => new Date());
@@ -31,13 +33,15 @@ function App() {
   const drag = useRef<Drag | null>(null);
   const pendingFocus = useRef<WindowKey | null>(null);
   const sceneReturn = useRef<HTMLElement | null>(null);
+  const novelSettings = useRef<HTMLDialogElement>(null);
   const roomFocus = useRef(false);
   const room = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const sendReset = useRef<HTMLButtonElement>(null);
   const resetReturn = useRef<HTMLElement | null>(null);
   const audio = useRef<AudioContext | null>(null);
-  const { lang, sound } = prefs;
+  const music = useRef<HTMLAudioElement>(null);
+  const { lang, musicVolume, effectsVolume } = prefs;
   const l = (text: Text) => local(text, lang);
   const title = (key: WindowKey) => l(titles[key]);
   const active = frames.filter(frame => !frame.minimized).sort((a, b) => b.order - a.order)[0]?.key;
@@ -48,6 +52,9 @@ function App() {
     storage.write('ssh-pref', prefs);
   }, [prefs, lang]);
   useEffect(() => { storage.write('ssh-progress', progress); }, [progress]);
+  useEffect(() => {
+    if (music.current) music.current.volume = musicVolume / 100;
+  }, [phase, musicVolume]);
   useEffect(() => {
     const update = window.setInterval(() => setNow(new Date()), 10_000);
     return () => window.clearInterval(update);
@@ -77,11 +84,13 @@ function App() {
     pendingFocus.current = null;
   }, [frames]);
   useEffect(() => {
-    if (!scene && sceneReturn.current) {
-      sceneReturn.current.focus();
-      sceneReturn.current = null;
-    }
-  }, [scene]);
+    if (novel || !sceneReturn.current) return;
+    const trigger = sceneReturn.current;
+    sceneReturn.current = null;
+    if (trigger.isConnected) trigger.focus();
+    else (stage.current?.querySelector<HTMLElement>('.app-window.active [data-title]') ??
+      stage.current?.querySelector<HTMLButtonElement>('.desktop-icon'))?.focus();
+  }, [novel]);
   useEffect(() => {
     if (resetOpen) sendReset.current?.focus();
     else if (resetReturn.current) {
@@ -90,8 +99,8 @@ function App() {
     }
   }, [resetOpen]);
 
-  function chime(enabled = sound) {
-    if (!enabled || !window.AudioContext) return;
+  function chime() {
+    if (effectsVolume === 0 || !window.AudioContext) return;
     try {
       const context = audio.current ??= new AudioContext();
       if (context.state === 'suspended') void context.resume().catch(() => {});
@@ -99,14 +108,23 @@ function App() {
       const gain = context.createGain();
       const time = context.currentTime;
       oscillator.frequency.setValueAtTime(560, time);
-      gain.gain.setValueAtTime(0.045, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+      const peak = 0.045 * effectsVolume / 100;
+      gain.gain.setValueAtTime(peak, time);
+      gain.gain.exponentialRampToValueAtTime(peak / 45, time + 0.1);
       oscillator.connect(gain).connect(context.destination);
       oscillator.start(time);
       oscillator.stop(time + 0.1);
     } catch {
       // Playback is optional and may be blocked by the browser.
     }
+  }
+
+  function toggleMusic() {
+    const player = music.current;
+    if (!player) return;
+    if (player.paused) {
+      void player.play().catch(() => setToast(['음악을 재생할 수 없습니다.', '暂时无法播放音乐。']));
+    } else player.pause();
   }
 
   function open(key: WindowKey) {
@@ -162,7 +180,9 @@ function App() {
 
   function powerOff() {
     chime();
-    setScene(null);
+    music.current?.pause();
+    setPlaying(false);
+    setNovel(null);
     setResetOpen(false);
     setToast(null);
     setFrames([]);
@@ -178,10 +198,12 @@ function App() {
   function play(next: SceneKey) {
     chime();
     sceneReturn.current = document.activeElement as HTMLElement | null;
-    setScene(next);
+    setToast(null);
+    setNovel({ scene: next, page: 0, choice: null, done: false });
   }
 
-  function completeScene(completed: SceneKey) {
+  function completeScene(position: NovelPosition) {
+    const completed = position.scene;
     setProgress(current => {
       if (completed.kind === 'ending') return { ...current, ending: true };
       return {
@@ -193,13 +215,14 @@ function App() {
         }),
       };
     });
+    setNovel(completed.kind === 'ending' ? { ...position, done: true } : null);
     if (completed.kind === 'call' && progress.patients[1 - completed.patient].called) {
       setToast(['숨겨진 폴더가 열렸습니다.', '隐藏文件夹已解锁。']);
     }
   }
 
   function save() {
-    const next = { ...prefs, ...progress };
+    const next = { ...prefs, ...progress, novel };
     if (storage.write('ssh-manual', next)) {
       setManual(next);
       setToast(['진행을 저장했습니다.', '进度已保存。']);
@@ -208,9 +231,14 @@ function App() {
 
   function load() {
     if (!manual) return;
-    setPrefs({ lang: manual.lang, sound: manual.sound });
+    setPrefs(readPreferences(manual));
     setProgress({ patients: manual.patients, ending: manual.ending });
-    setFrames(current => current.filter(frame => frame.key !== 'memo' && frame.key !== 'letter'));
+    if (!manual.patients.every(patient => patient.called)) {
+      setFrames(current => current.filter(frame => frame.key !== 'memo' && frame.key !== 'letter'));
+    }
+    if (!novel && manual.novel) sceneReturn.current = document.activeElement as HTMLElement | null;
+    novelSettings.current?.close();
+    setNovel(manual.novel);
     setToast(['저장된 진행을 불러왔습니다.', '已读取存档。']);
   }
 
@@ -232,12 +260,27 @@ function App() {
     const keyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       if (resetOpen) setResetOpen(false);
-      else if (scene) setScene(null);
-      else if (active) close(active);
+      else if (novel) {
+        const dialog = novelSettings.current;
+        if (dialog && !dialog.open) {
+          event.preventDefault();
+          dialog.showModal();
+        }
+      } else if (active) close(active);
     };
     window.addEventListener('keydown', keyDown);
     return () => window.removeEventListener('keydown', keyDown);
   });
+
+  function saveControls() {
+    return <section>
+      <div><h3>{l(['진행 저장', '游戏存档'])}</h3><p>{l(['이 브라우저에 수동 저장을 남깁니다.', '进度保存在当前浏览器。'])}</p></div>
+      <div className="language-options">
+        <button onClick={save}>{l(['저장', '保存进度'])}</button>
+        <button onClick={load} disabled={!manual}>{l(['불러오기', '读取存档'])}</button>
+      </div>
+    </section>;
+  }
 
   function settings() {
     return <div className="panel preferences">
@@ -249,19 +292,7 @@ function App() {
             {option === 'ko' ? '한국어' : '中文'}
           </button>)}</div>
       </section>
-      <section>
-        <div><h3>{l(['효과음', '音效'])}</h3></div>
-        <button aria-pressed={sound} onClick={() => { setPrefs(current => ({ ...current, sound: !sound })); chime(!sound); }}>
-          {l(sound ? ['켜짐', '开启'] : ['꺼짐', '关闭'])}
-        </button>
-      </section>
-      <section>
-        <div><h3>{l(['진행 저장', '游戏存档'])}</h3><p>{l(['이 브라우저에 수동 저장을 남깁니다.', '进度保存在当前浏览器。'])}</p></div>
-        <div className="language-options">
-          <button onClick={save}>{l(['저장', '保存进度'])}</button>
-          <button onClick={load} disabled={!manual}>{l(['불러오기', '读取存档'])}</button>
-        </div>
-      </section>
+      {saveControls()}
       <section>
         <div><h3>{l(['진행 초기화', '重置进度'])}</h3></div>
         <button onClick={event => { resetReturn.current = event.currentTarget; setResetOpen(true); }}>
@@ -286,6 +317,8 @@ function App() {
       case 'video': return <VideoApp lang={lang}/>;
       case 'mine': return <Minesweeper lang={lang}/>;
       case 'calc': return <CalculatorApp lang={lang}/>;
+      case 'ipod': return <IPod prefs={prefs} playing={playing} onToggle={toggleMusic} onTest={chime}
+        onVolume={(key, value) => setPrefs(current => ({ ...current, [key]: value }))}/>;
       case 'settings': return settings();
     }
   }
@@ -304,10 +337,11 @@ function App() {
   </div>;
 
   return <>
-    <main className="sweet-desktop" inert={!!scene || resetOpen}>
+    <audio ref={music} src={ipodPreview} preload="none" loop
+      onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}/>
+    <main className="sweet-desktop" hidden={!!novel} inert={resetOpen}>
       <header className="os-bar">
         <span className="os-name"><span className="os-mark">S</span> Sweet OS</span>
-        <button onClick={() => open('records')}>{title('records')}</button>
         <button onClick={() => open('settings')}>{title('settings')}</button>
         <span className="os-clock"><Clock3 size={15}/>{now.toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'zh-CN',
           { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
@@ -347,7 +381,23 @@ function App() {
         </button>)}
       </nav>
     </main>
-    {scene && <Novel scene={scene} lang={lang} onBack={() => setScene(null)} onComplete={() => completeScene(scene)} chime={chime}/>}
+    {novel && <>
+      <Novel position={novel} lang={lang} onSettings={() => novelSettings.current?.showModal()}
+        onPosition={setNovel} onComplete={() => completeScene(novel)} chime={chime}/>
+      <dialog ref={novelSettings} className="novel-settings panel preferences" aria-labelledby="novel-settings-title">
+        <div className="novel-settings-header">
+          <h2 id="novel-settings-title">{l(['시스템 설정', '系统设置'])}</h2>
+          <button className="subtle" aria-label={l(['설정 닫기', '关闭设置'])}
+            onClick={() => novelSettings.current?.close()}><X size={18}/></button>
+        </div>
+        {saveControls()}
+        <section className="novel-settings-actions">
+          <button onClick={() => setNovel(null)}>{l(['데스크톱으로 나가기', '退出到桌面'])}</button>
+          <button className="primary" onClick={() => novelSettings.current?.close()}>{l(['계속 읽기', '继续阅读'])}</button>
+        </section>
+        <p className="novel-settings-status" role="status">{toast && l(toast)}</p>
+      </dialog>
+    </>}
     {resetOpen && <div className="reset-backdrop">
       <section role="alertdialog" aria-modal="true" aria-labelledby="reset-title" className="reset-dialog">
         <h2 id="reset-title">{l(['진행을 초기화할까요?', '重置游戏进度？'])}</h2>
@@ -356,7 +406,7 @@ function App() {
           <button className="primary" onClick={reset}>{l(['초기화', '重置'])}</button></div>
       </section>
     </div>}
-    {toast && !scene && <div className="system-toast" role="status">{l(toast)}</div>}
+    {toast && <div className="system-toast" role="status">{l(toast)}</div>}
   </>;
 }
 

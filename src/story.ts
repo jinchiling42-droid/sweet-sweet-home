@@ -1,4 +1,4 @@
-import type { Text } from './game';
+import type { SceneKey, Text } from './game';
 
 export type Dialogue = { speaker: Text; line: Text };
 export type Story = { title: Text; pages: Dialogue[]; choices?: Dialogue[] };
@@ -78,3 +78,11 @@ export const ending: Story = {
     { speaker: doctor, line: ['방 안에는 아직 할 말이 조금 남아 있다. 오늘은 그 자리를 비워 두지 않기로 한다.', '房间里还有一点话没说完。今天，我决定坐在这里。'] },
   ],
 };
+
+export function storyForScene(scene: SceneKey): Story {
+  switch (scene.kind) {
+    case 'memory': return memories[scene.id];
+    case 'call': return calls[scene.patient];
+    case 'ending': return ending;
+  }
+}

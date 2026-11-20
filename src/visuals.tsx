@@ -57,6 +57,15 @@ export function RetroIcon({ kind }: { kind: string }) {
             />
           ))}
         </>
+      ) : kind === 'ipod' ? (
+        <>
+          <rect x="16" y="5" width="32" height="54" rx="5" fill="#dce7ed" />
+          <rect x="21" y="11" width="22" height="17" rx="2" fill="#a2bdd0" />
+          <path d="M34 16v7m0-7 4 2" />
+          <circle cx="31" cy="23" r="2.5" fill="#26394c" />
+          <circle cx="32" cy="43" r="11" fill="#f5f6f2" />
+          <circle cx="32" cy="43" r="4" fill="#afc4d3" />
+        </>
       ) : kind === 'mine' ? (
         <>
           <rect x="9" y="10" width="46" height="46" fill="#d4e0e6" />
