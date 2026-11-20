@@ -22,31 +22,15 @@ export const titles: Record<WindowKey, Text> = {
   letter: ['보내지 않은 편지', '没寄出的信'],
 };
 
-export function Records({ lang, progress, open }: {
+export function Records({ lang, open }: {
   lang: Lang;
-  progress: Progress;
   open: (key: WindowKey) => void;
 }) {
-  return <div className="archive">
-    <aside className="archive-sidebar">
-      <span>SWEET HD</span>
-      {(['records', 'notes', 'hidden'] as const).map(key => <button className={key === 'records' ? 'current' : ''}
-        key={key} onClick={() => open(key)}><RetroIcon kind={key}/>{local(titles[key], lang)}</button>)}
-    </aside>
-    <div className="archive-list panel">
-      <p className="path-label">SWEET HD / {local(titles.records, lang)}</p>
-      <h2>{local(titles.records, lang)}</h2>
-      <p>{local(['상담 기록의 단어를 눌러 기억을 열어 보세요.', '点击咨询记录中的关键词，打开对应的回忆。'], lang)}</p>
-      {(['case-0', 'case-1'] as const).map((key, index) => {
-        const patient = progress.patients[index];
-        const words = memoryIds[index].map(id => local(memories[id].title, lang)).join(' · ');
-        return <button key={key} className="file-row" onClick={() => open(key)}>
-          <RetroIcon kind="records"/>
-          <span><strong>{local(titles[key], lang)}</strong><small>{words}</small></span>
-          <span className="file-status">{patient.called ? local(['회상 완료', '已完成回访'], lang) : `${patient.explored.length}/3`}</span>
-        </button>;
-      })}
-    </div>
+  return <div className="panel">
+    {(['case-0', 'case-1'] as const).map(key => <button key={key} className="file-row" onClick={() => open(key)}>
+      <RetroIcon kind="records"/>
+      <strong>{local(titles[key], lang)}</strong>
+    </button>)}
   </div>;
 }
 
@@ -70,7 +54,7 @@ export function PatientRecord({ index, lang, progress, open, play }: {
 }) {
   const state = progress.patients[index];
   const ids = memoryIds[index];
-  const remaining = ids.length - state.explored.length;
+  const canCall = state.explored.length >= ids.length;
   return <div className="panel">
     <button className="subtle" onClick={() => open('records')}>{local(titles.records, lang)}</button>
     <p className="path-label">{local(['상담 기록', '咨询记录'], lang)} / 0{index + 1}</p>
@@ -83,10 +67,9 @@ export function PatientRecord({ index, lang, progress, open, play }: {
       </button>)}
     </div>
     <div className="record-footer">
-      <button className="primary" disabled={remaining > 0} onClick={() => play({ kind: 'call', patient: index })}>
+      <button className="primary" disabled={!canCall} onClick={() => play({ kind: 'call', patient: index })}>
         <Phone size={16}/>{local(state.called ? ['전화 다시 듣기', '重听电话'] : ['전화 회상', '电话回访'], lang)}
       </button>
-      <span>{remaining ? local([`남은 기억 ${remaining}개`, `还有 ${remaining} 段回忆`], lang) : local(['전화에 연결할 수 있습니다.', '电话可以接通了。'], lang)}</span>
     </div>
   </div>;
 }

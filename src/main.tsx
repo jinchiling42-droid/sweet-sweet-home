@@ -308,7 +308,7 @@ function App() {
 
   function contents(key: WindowKey) {
     switch (key) {
-      case 'records': return <Records {...{ lang, progress, open }}/>;
+      case 'records': return <Records {...{ lang, open }}/>;
       case 'case-0': case 'case-1':
         return <PatientRecord index={key === 'case-0' ? 0 : 1} {...{ lang, progress, open, play }}/>;
       case 'notes': return <Notes {...{ lang, open }}/>;

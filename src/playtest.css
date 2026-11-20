@@ -147,20 +147,11 @@ h2, h3, p { overflow-wrap: anywhere; }
   background: linear-gradient(#5f809c, #36536b); border-color: #2e4c66; color: white; box-shadow: inset 0 1px #e6f3ff62;
 }
 .panel button.primary:hover:not(:disabled), .novel button.primary:hover, .reset-dialog button.primary:hover { background: #36546d; }
-.archive { display: grid; grid-template-columns: minmax(142px, 26%) minmax(0, 1fr); min-height: 100%; }
-.archive-sidebar { padding: 20px 9px; background: #d6e2eb; border-right: 1px solid #a5b5c4; }
-.archive-sidebar > span { display: block; padding: 0 9px 12px; font: 650 .78rem ui-monospace, monospace; letter-spacing: .08em; }
-.archive-sidebar button { display: flex; align-items: center; width: 100%; padding: 6px; font-size: .85rem; gap: .4rem; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 4px; }
-.archive-sidebar button.current { background: #eaf0f5; border-color: #8c9eb0; }
-.archive-sidebar .retro-icon { width: 29px; height: 29px; }
 .panel .file-row {
   display: flex; text-align: left; justify-content: start; width: 100%;
   margin-top: .6rem; padding: .55rem .7rem; min-height: 62px; gap: .6rem;
 }
 .file-row .retro-icon { width: 43px; height: 43px; }
-.file-row strong, .file-row small { display: block; }
-.file-row small { color: var(--ink-muted); margin-top: .25rem; font-size: .8rem; font-weight: 450; }
-.file-status { margin-left: auto; color: #415973; font-size: .76rem; white-space: nowrap; }
 .file-list { width: min(100%, 430px); margin: auto; }
 .paper-note {
   padding: 1rem; margin: 0 0 .85rem; background: #fbfcf9; border: 1px solid #a2b0bb;
@@ -304,8 +295,6 @@ h2, h3, p { overflow-wrap: anywhere; }
   .room-heading p { margin-top: 12px; }
   .app-window { width: calc(100% - 16px); height: calc(100% - 16px); left: 8px; top: 8px; }
   .window-bar { grid-template-columns: 105px minmax(0, 1fr) 24px; cursor: default; }
-  .archive { grid-template-columns: 1fr; }
-  .archive-sidebar { display: none; }
   .desktop-icons-grid { top: .8rem; }
   .os-clock svg { display: none; }
 }
