@@ -1,6 +1,44 @@
 import { useState } from 'react';
-import { Pause, Play, RotateCcw, Volume2 } from 'lucide-react';
+import { Images, LockKeyhole, Pause, Play, RotateCcw, Volume2 } from 'lucide-react';
 import { local, type Lang, type Preferences, type Text } from './game';
+
+const albumCode = '041206';
+
+export function Album({ lang }: { lang: Lang }) {
+  const [code, setCode] = useState('');
+  const [unlocked, setUnlocked] = useState(false);
+  const [incorrect, setIncorrect] = useState(false);
+
+  if (unlocked) return <div className="panel album-panel">
+    <div className="album-empty">
+      <Images size={44} strokeWidth={1.3} aria-hidden="true"/>
+      <p>{local(['사진 없음', '暂无照片'], lang)}</p>
+    </div>
+  </div>;
+
+  return <div className="panel album-panel">
+    <form className="album-form" autoComplete="off" onSubmit={event => {
+      event.preventDefault();
+      if (code === albumCode) {
+        setUnlocked(true);
+        setCode('');
+      } else setIncorrect(true);
+    }}>
+      <LockKeyhole size={44} strokeWidth={1.3} aria-hidden="true"/>
+      <label htmlFor="album-code">{local(['비밀번호', '密码'], lang)}</label>
+      <input id="album-code" type="password" inputMode="numeric" maxLength={albumCode.length}
+        value={code} aria-invalid={incorrect} aria-describedby={incorrect ? 'album-error' : undefined}
+        onChange={event => {
+          setCode(event.currentTarget.value.replace(/[^0-9]/g, ''));
+          setIncorrect(false);
+        }}/>
+      <button className="primary" disabled={code.length !== albumCode.length}>
+        {local(['잠금 해제', '解锁'], lang)}
+      </button>
+      {incorrect && <p id="album-error" role="alert">{local(['비밀번호가 틀렸습니다.', '密码错误。'], lang)}</p>}
+    </form>
+  </div>;
+}
 
 export function VideoApp({ lang }: { lang: Lang }) {
   const [idx, setIdx] = useState(0),

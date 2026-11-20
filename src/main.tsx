@@ -4,7 +4,7 @@ import { Clock3, FolderLock, Minus, Power, Square, X } from 'lucide-react';
 import {
   apps, Hidden, Notes, PatientRecord, PersonalFile, Records, titles, type AppId, type WindowKey,
 } from './archive';
-import { CalculatorApp, IPod, Minesweeper, VideoApp } from './desktop-apps';
+import { Album, CalculatorApp, IPod, Minesweeper, VideoApp } from './desktop-apps';
 import {
   emptyProgress, local, readPreferences, readProgress, readSave, storage, type NovelPosition, type SceneKey, type Text,
 } from './game';
@@ -312,7 +312,8 @@ function App() {
       case 'case-0': case 'case-1':
         return <PatientRecord index={key === 'case-0' ? 0 : 1} {...{ lang, progress, open, play }}/>;
       case 'notes': return <Notes {...{ lang, open }}/>;
-      case 'hidden': return <Hidden {...{ lang, progress, open }}/>;
+      case 'album': return <Album lang={lang}/>;
+      case 'hidden': return <Hidden {...{ lang, locked, open }}/>;
       case 'memo': case 'letter': return <PersonalFile file={key} {...{ lang, progress, play }}/>;
       case 'video': return <VideoApp lang={lang}/>;
       case 'mine': return <Minesweeper lang={lang}/>;

@@ -1,15 +1,16 @@
-import { FileText, FolderLock, Phone } from 'lucide-react';
+import { FileText, Phone } from 'lucide-react';
 import { local, memoryIds, type Lang, type Progress, type SceneKey, type Text } from './game';
 import { memories } from './story';
 import { RetroIcon } from './visuals';
 
-export const apps = ['records', 'notes', 'video', 'mine', 'calc', 'ipod', 'settings', 'hidden'] as const;
+export const apps = ['records', 'notes', 'album', 'video', 'mine', 'calc', 'ipod', 'settings', 'hidden'] as const;
 export type AppId = typeof apps[number];
 export type WindowKey = AppId | 'case-0' | 'case-1' | 'memo' | 'letter';
 
 export const titles: Record<WindowKey, Text> = {
-  records: ['환자 기록', '患者档案'],
+  records: ['업무 기록', '工作记录'],
   notes: ['메모', '备忘录'],
+  album: ['사진첩', '相册'],
   video: ['비디오', '视频'],
   mine: ['지뢰찾기', '扫雷'],
   calc: ['계산기', '计算器'],
@@ -95,25 +96,23 @@ export function Notes({ lang, open }: { lang: Lang; open: (key: WindowKey) => vo
   </div>;
 }
 
-export function Hidden({ lang, progress, open }: {
+export function Hidden({ lang, locked, open }: {
   lang: Lang;
-  progress: Progress;
+  locked: boolean;
   open: (key: WindowKey) => void;
 }) {
-  const completed = progress.patients.filter(patient => patient.called).length;
+  if (locked) return <div className="panel locked-folder">
+    <h2>{local(['잠김', '已锁定'], lang)}</h2>
+  </div>;
+
   return <div className="panel hidden-panel">
-    {completed === 2 ? <RetroIcon kind="records"/> : <FolderLock size={48} strokeWidth={1.3}/>}
+    <RetroIcon kind="records"/>
     <h2>{local(titles.hidden, lang)}</h2>
-    {completed === 2 ? <div className="file-list">
+    <div className="file-list">
       {(['memo', 'letter'] as const).map(key => <button className="file-row" key={key} onClick={() => open(key)}>
         <FileText size={21}/><strong>{local(titles[key], lang)}</strong>
       </button>)}
-    </div> : <>
-      <p>{local(['두 환자의 기억과 전화 회상을 마치면 열립니다.', '读完两位患者的回忆并完成电话回访后，文件夹就会打开。'], lang)}</p>
-      <progress value={completed} max="2" aria-label={local(['완료한 전화 회상', '完成的电话回访'], lang)}/>
-      <p>{completed} / 2</p>
-      <button className="subtle" onClick={() => open('records')}>{local(titles.records, lang)}</button>
-    </>}
+    </div>
   </div>;
 }
 

@@ -95,10 +95,10 @@ h2, h3, p { overflow-wrap: anywhere; }
   background: linear-gradient(#f8fbfccf 0%, #cbd9e8bf 46%, #90a9bcae 52%, #d3e0ead4 97%);
   border: 1px solid #48647d; border-radius: 11px; box-shadow: inset 0 0 0 1px #fbffffab, 4px 5px 0 #2337474a;
 }
-.sweet-dock button { display: grid; place-items: center; position: relative; width: clamp(35px, 10vw, 52px); height: 46px; padding: 0; background: transparent; border: 1px solid transparent; border-radius: 6px; }
+.sweet-dock button { display: grid; place-items: center; position: relative; width: clamp(35px, 10vw, 52px); min-width: 0; height: 46px; padding: 0; background: transparent; border: 1px solid transparent; border-radius: 6px; }
 .sweet-dock button:hover { background: #e9f0f7; border-color: #8297a9; }
 .sweet-dock button.running::after { content: ""; background: #3c5368; position: absolute; border-radius: 50%; width: 4px; height: 4px; bottom: 0; }
-.sweet-dock .retro-icon { width: min(9.4vw, 41px); height: min(9.4vw, 41px); }
+.sweet-dock .retro-icon { width: min(8vw, 41px); height: min(8vw, 41px); }
 .app-window {
   --window-width: min(650px, calc(100% - 16px));
   --window-height: min(555px, calc(100% - 16px));
@@ -165,7 +165,17 @@ h2, h3, p { overflow-wrap: anywhere; }
 .notes-grid article:nth-child(2) { background: #e8eff4; }
 .hidden-panel { text-align: center; }
 .hidden-panel > svg { margin-bottom: 8px; color: #59738b; }
-.hidden-panel progress { width: min(280px, 80%); accent-color: #57768e; }
+.locked-folder, .album-panel { display: grid; place-items: center; min-height: 100%; text-align: center; }
+.locked-folder h2 { margin: 0; font-size: 1.2rem; }
+.album-form { display: grid; justify-items: center; gap: .75rem; width: min(100%, 14rem); }
+.album-form > svg, .album-empty > svg { color: #59738b; }
+.album-form input {
+  width: 100%; padding: .6rem .8rem; font: 1rem ui-monospace, monospace; letter-spacing: .25em;
+  text-align: center; color: var(--ink); background: #fbfcf9; border: 1px solid #7b8fa0; border-radius: 5px;
+}
+.album-form input[aria-invalid="true"] { border-color: #a75760; }
+.album-form #album-error { color: #8a303e; margin: 0; }
+.album-empty p { margin: .65rem 0 0; }
 .preferences section { display: flex; align-items: center; gap: .65rem; padding: .75rem 0; justify-content: space-between; border-bottom: 1px solid #bdc9d3; }
 .preferences section h3, .preferences section p { margin: 0; }
 .preferences section p { font-size: .84rem; }

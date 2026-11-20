@@ -35,6 +35,14 @@ export function RetroIcon({ kind }: { kind: string }) {
           />
           <path d="M10 11v43" />
         </>
+      ) : kind === 'album' ? (
+        <>
+          <rect x="10" y="12" width="43" height="40" rx="3" fill="#a7bed0" transform="rotate(-9 32 32)" />
+          <rect x="15" y="17" width="42" height="38" rx="3" fill="#eef2ec" />
+          <rect x="21" y="23" width="30" height="24" fill="#c5dce8" />
+          <circle cx="42" cy="30" r="3" fill="#f5e4a7" />
+          <path d="m21 43 9-9 7 7 5-5 9 9v2H21z" fill="#80a2b8" />
+        </>
       ) : kind === 'video' ? (
         <>
           <rect x="6" y="13" width="51" height="40" rx="2" fill="#91a7bc" />
