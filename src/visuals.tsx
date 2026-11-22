@@ -35,6 +35,15 @@ export function RetroIcon({ kind }: { kind: string }) {
           />
           <path d="M10 11v43" />
         </>
+      ) : kind === 'prescription' ? (
+        <>
+          <path d="M12 11h33l8 8v36H12z" fill="#a7bed0" transform="rotate(7 32 32)" />
+          <path d="M11 7h31l9 9v40H11z" fill="#f6f2e6" />
+          <path d="M41 7v11h10M18 32h25m-25 7h25m-25 7h12" stroke="#68859f" />
+          <path d="M19 13v14m-7-7h14" />
+          <circle cx="42" cy="46" r="7" fill="#b8c9d2" />
+          <path d="m39 46 2 2 4-5" />
+        </>
       ) : kind === 'album' ? (
         <>
           <rect x="10" y="12" width="43" height="40" rx="3" fill="#a7bed0" transform="rotate(-9 32 32)" />

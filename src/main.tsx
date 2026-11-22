@@ -1,19 +1,25 @@
-import { StrictMode, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { lazy, StrictMode, Suspense, useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Clock3, FolderLock, Minus, Power, Square, X } from 'lucide-react';
 import {
-  apps, Hidden, Notes, PatientRecord, PersonalFile, Records, titles, type AppId, type WindowKey,
+  apps, caseWindow, Hidden, Notes, PatientRecord, PersonalFile, Records, titles, type AppId, type WindowKey,
 } from './archive';
 import { Album, CalculatorApp, IPod, Minesweeper, VideoApp } from './desktop-apps';
 import {
-  emptyProgress, local, readPreferences, readProgress, readSave, storage, type NovelPosition, type SceneKey, type Text,
+  advanceScene, chooseInScene, emptyProgress, enterScene, isHiddenFolderUnlocked, issuePrescription, local,
+  readPreferences, readProgress, readSave, saveSnapshot, storage, updatePrescriptionDraft,
+  type Progress, type SceneRequest, type Text,
 } from './game';
 import { Novel } from './novel';
+import { patientIds } from './patients';
+import { PrescriptionApp } from './prescription';
 import ipodPreview from './assets/ipod-preview.mp3';
 import { RetroIcon, Room } from './visuals';
 import './style.css';
 import './retro.css';
 import './playtest.css';
+
+const DebugPanel = import.meta.env.DEV ? lazy(() => import('./debug-panel')) : null;
 
 type Frame = { key: WindowKey; x: number; y: number; order: number; minimized: boolean; expanded: boolean };
 type Drag = { key: WindowKey; pointer: number; startX: number; startY: number; x: number; y: number };
@@ -24,7 +30,6 @@ function App() {
   const [progress, setProgress] = useState(() => readProgress(storage.read('ssh-progress')) ?? emptyProgress());
   const [manual, setManual] = useState(readSave);
   const [frames, setFrames] = useState<Frame[]>([]);
-  const [novel, setNovel] = useState<NovelPosition | null>(null);
   const [playing, setPlaying] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [toast, setToast] = useState<Text | null>(null);
@@ -45,13 +50,14 @@ function App() {
   const l = (text: Text) => local(text, lang);
   const title = (key: WindowKey) => l(titles[key]);
   const active = frames.filter(frame => !frame.minimized).sort((a, b) => b.order - a.order)[0]?.key;
-  const locked = !progress.patients.every(patient => patient.called);
+  const novel = progress.novel;
+  const locked = !isHiddenFolderUnlocked(progress);
 
   useEffect(() => {
     document.documentElement.lang = lang === 'ko' ? 'ko' : 'zh-Hans';
     storage.write('ssh-pref', prefs);
   }, [prefs, lang]);
-  useEffect(() => { storage.write('ssh-progress', progress); }, [progress]);
+  useEffect(() => { storage.write('ssh-progress', saveSnapshot(progress)); }, [progress]);
   useEffect(() => {
     if (music.current) music.current.volume = musicVolume / 100;
   }, [phase, musicVolume]);
@@ -182,7 +188,6 @@ function App() {
     chime();
     music.current?.pause();
     setPlaying(false);
-    setNovel(null);
     setResetOpen(false);
     setToast(null);
     setFrames([]);
@@ -195,34 +200,34 @@ function App() {
     setPhase('room');
   }
 
-  function play(next: SceneKey) {
+  function play(request: SceneRequest) {
+    const next = enterScene(progress, request);
+    if (next === progress) return;
     chime();
     sceneReturn.current = document.activeElement as HTMLElement | null;
     setToast(null);
-    setNovel({ scene: next, page: 0, choice: null, done: false });
+    setProgress(next);
   }
 
-  function completeScene(position: NovelPosition) {
-    const completed = position.scene;
-    setProgress(current => {
-      if (completed.kind === 'ending') return { ...current, ending: true };
-      return {
-        ...current,
-        patients: current.patients.map((patient, index) => {
-          if (index !== completed.patient) return patient;
-          return completed.kind === 'call' ? { ...patient, called: true } :
-            { ...patient, explored: [...new Set([...patient.explored, completed.id])] };
-        }),
-      };
-    });
-    setNovel(completed.kind === 'ending' ? { ...position, done: true } : null);
-    if (completed.kind === 'call' && progress.patients[1 - completed.patient].called) {
-      setToast(['숨겨진 폴더가 열렸습니다.', '隐藏文件夹已解锁。']);
+  function exitNovel() {
+    novelSettings.current?.close();
+    setProgress(current => ({ ...current, novel: null }));
+  }
+
+  function restoreProgress(next: Progress) {
+    if (!isHiddenFolderUnlocked(next)) {
+      setFrames(current => current.filter(frame => frame.key !== 'memo' && frame.key !== 'letter'));
     }
+    setProgress(next);
+  }
+
+  function requestReset(trigger: HTMLElement) {
+    resetReturn.current = trigger;
+    setResetOpen(true);
   }
 
   function save() {
-    const next = { ...prefs, ...progress, novel };
+    const next = { ...prefs, ...saveSnapshot(progress) };
     if (storage.write('ssh-manual', next)) {
       setManual(next);
       setToast(['진행을 저장했습니다.', '进度已保存。']);
@@ -232,13 +237,10 @@ function App() {
   function load() {
     if (!manual) return;
     setPrefs(readPreferences(manual));
-    setProgress({ patients: manual.patients, ending: manual.ending });
-    if (!manual.patients.every(patient => patient.called)) {
-      setFrames(current => current.filter(frame => frame.key !== 'memo' && frame.key !== 'letter'));
-    }
     if (!novel && manual.novel) sceneReturn.current = document.activeElement as HTMLElement | null;
     novelSettings.current?.close();
-    setNovel(manual.novel);
+    const { patients, ending, novel: savedNovel, schemaVersion } = manual;
+    restoreProgress({ patients, ending, novel: savedNovel, schemaVersion });
     setToast(['저장된 진행을 불러왔습니다.', '已读取存档。']);
   }
 
@@ -248,9 +250,8 @@ function App() {
       setToast(['이 브라우저에서 저장을 지울 수 없습니다.', '当前浏览器无法删除存档。']);
       return;
     }
-    setProgress(emptyProgress());
+    restoreProgress(emptyProgress());
     setManual(null);
-    setFrames(current => current.filter(frame => frame.key !== 'memo' && frame.key !== 'letter'));
     setResetOpen(false);
     setToast(['진행을 초기화했습니다.', '游戏进度已重置。']);
   }
@@ -295,7 +296,7 @@ function App() {
       {saveControls()}
       <section>
         <div><h3>{l(['진행 초기화', '重置进度'])}</h3></div>
-        <button onClick={event => { resetReturn.current = event.currentTarget; setResetOpen(true); }}>
+        <button onClick={event => requestReset(event.currentTarget)}>
           {l(['초기화', '重置'])}
         </button>
       </section>
@@ -303,14 +304,24 @@ function App() {
         <div><h3>{l(['전원', '电源'])}</h3><p>{l(['진행을 유지하고 방으로 돌아갑니다.', '保留探索进度，返回初始房间。'])}</p></div>
         <button className="primary" onClick={powerOff}><Power size={16}/>{l(['전원 끄기', '关闭电源'])}</button>
       </section>
+      {DebugPanel && <Suspense fallback={null}><DebugPanel lang={lang} progress={progress}
+        onChange={restoreProgress} onReset={requestReset}/></Suspense>}
     </div>;
   }
 
   function contents(key: WindowKey) {
+    const patient = patientIds.find(id => caseWindow(id) === key);
+    if (patient) return <PatientRecord id={patient} {...{ lang, progress, open, play }}/>;
     switch (key) {
       case 'records': return <Records {...{ lang, open }}/>;
-      case 'case-0': case 'case-1':
-        return <PatientRecord index={key === 'case-0' ? 0 : 1} {...{ lang, progress, open, play }}/>;
+      case 'prescription': return <PrescriptionApp lang={lang} progress={progress}
+        onDraft={(id, draft) => setProgress(current => updatePrescriptionDraft(current, id, draft))}
+        onIssue={id => {
+          const issuedAt = new Date().toISOString();
+          chime();
+          setProgress(current => issuePrescription(current, id, issuedAt));
+        }}
+        onCall={patient => play({ kind: 'call', patient })}/>;
       case 'notes': return <Notes {...{ lang, open }}/>;
       case 'album': return <Album lang={lang}/>;
       case 'hidden': return <Hidden {...{ lang, locked, open }}/>;
@@ -356,7 +367,7 @@ function App() {
         </div>
         <div className="desktop-inscription"><strong>Sweet OS</strong><span>SWEET HD</span></div>
         {frames.map(frame => <section key={frame.key} hidden={frame.minimized}
-          className={`app-window ${active === frame.key ? 'active' : ''} ${frame.expanded ? 'expanded' : ''}`}
+          className={`app-window ${frame.key === 'prescription' ? 'rx-window' : ''} ${active === frame.key ? 'active' : ''} ${frame.expanded ? 'expanded' : ''}`}
           aria-labelledby={`title-${frame.key}`}
           style={{ '--window-x': `${frame.x}px`, '--window-y': `${frame.y}px`, zIndex: frame.order } as CSSProperties}
           onPointerDown={() => { if (active !== frame.key) patch(frame.key, { order: ++stack.current }); }}
@@ -384,7 +395,8 @@ function App() {
     </main>
     {novel && <>
       <Novel position={novel} lang={lang} onSettings={() => novelSettings.current?.showModal()}
-        onPosition={setNovel} onComplete={() => completeScene(novel)} chime={chime}/>
+        onAdvance={() => setProgress(current => advanceScene(current, novel))}
+        onChoice={index => setProgress(current => chooseInScene(current, novel, index))} chime={chime}/>
       <dialog ref={novelSettings} className="novel-settings panel preferences" aria-labelledby="novel-settings-title">
         <div className="novel-settings-header">
           <h2 id="novel-settings-title">{l(['시스템 설정', '系统设置'])}</h2>
@@ -393,7 +405,7 @@ function App() {
         </div>
         {saveControls()}
         <section className="novel-settings-actions">
-          <button onClick={() => setNovel(null)}>{l(['데스크톱으로 나가기', '退出到桌面'])}</button>
+          <button onClick={exitNovel}>{l(['데스크톱으로 나가기', '退出到桌面'])}</button>
           <button className="primary" onClick={() => novelSettings.current?.close()}>{l(['계속 읽기', '继续阅读'])}</button>
         </section>
         <p className="novel-settings-status" role="status">{toast && l(toast)}</p>
