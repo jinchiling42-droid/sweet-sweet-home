@@ -57,7 +57,7 @@ export function Novel({ position, lang, onSettings, onAdvance, onChoice, chime }
           onClick={() => { chime(); onChoice(index); }}>{local(item.speaker, lang)}</button>)
           : <button className="primary" onClick={() => { chime(); onAdvance(); }}>{local(finalLine ? (
             scene.kind === 'memory' ? ['기억 기록하기', '记录回忆'] :
-              scene.kind === 'call' ? ['통화 마치기', '结束通话'] : ['편지 접기', '折起信纸']
+              scene.kind === 'call' ? ['통화 마치기', '结束通话'] : ['이야기 마치기', '结束故事']
           ) : ['계속', '继续'], lang)}</button>}
       </div>}
     </div>

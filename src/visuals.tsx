@@ -35,14 +35,14 @@ export function RetroIcon({ kind }: { kind: string }) {
           />
           <path d="M10 11v43" />
         </>
-      ) : kind === 'prescription' ? (
+      ) : kind === 'reports' ? (
         <>
           <path d="M12 11h33l8 8v36H12z" fill="#a7bed0" transform="rotate(7 32 32)" />
           <path d="M11 7h31l9 9v40H11z" fill="#f6f2e6" />
           <path d="M41 7v11h10M18 32h25m-25 7h25m-25 7h12" stroke="#68859f" />
-          <path d="M19 13v14m-7-7h14" />
-          <circle cx="42" cy="46" r="7" fill="#b8c9d2" />
-          <path d="m39 46 2 2 4-5" />
+          <path d="M18 19h13v8H18z" fill="#a9c2d3" />
+          <rect x="35" y="40" width="14" height="12" rx="1" fill="#bdcdd2" />
+          <path d="M39 45h6m-6 3h6" />
         </>
       ) : kind === 'album' ? (
         <>
@@ -101,14 +101,58 @@ export function RetroIcon({ kind }: { kind: string }) {
     </svg>
   );
 }
+export function CakeArtwork({ candle = false }: { candle?: boolean }) {
+  return (
+    <svg aria-hidden="true"
+      viewBox="0 0 160 130"
+      fill="none"
+      stroke="#30465a"
+      strokeWidth="2.5"
+    >
+      <ellipse cx="79" cy="103" rx="71" ry="20" fill="#7d94a7" />
+      <ellipse cx="77" cy="98" rx="68" ry="19" fill="#e2e9eb" />
+      <path d="M36 50l49-28 43 47-4 32-88-15z" fill="#c6c1ba" />
+      <path d="M36 62l90 17M36 74l89 17" stroke="#f0eee4" strokeWidth="9" />
+      <path d="M36 50l49-28 43 47-92-16z" fill="#f0eee4" />
+      <path d="M36 50v36l88 15 4-32" />
+      <path d="M75 38c-15-18 11-27 17-9 5 13-11 15-17 9z" fill="#9d6f78" />
+      <path d="M81 26l1-8" />
+      {candle && <g className="cake-candle" strokeWidth="1.5">
+        <path d="m63 43 1-24 7 1-1 25z" fill="#efe4bd" />
+        <path d="m64 27 7 3m-7 4 6 3" stroke="#a1747c" />
+        <path d="m67 19 1-5" />
+        <path className="candle-flame" d="M67 14c-4-1-4-5 1-10 1 4 5 7 1 10z" fill="#efb65f" stroke="#905b49"/>
+      </g>}
+    </svg>
+  );
+}
+
+export function CakeButton({ lang, candle, onClick, desktop = false, available = true }: {
+  lang: string;
+  candle: boolean;
+  onClick: () => void;
+  desktop?: boolean;
+  available?: boolean;
+}) {
+  const label = lang === 'ko' ? (candle ? '촛불이 꽂힌 케이크 살펴보기' : '케이크 살펴보기')
+    : (candle ? '查看插着蜡烛的蛋糕' : '查看蛋糕');
+  if (desktop && (!candle || !available)) return <div className="cake desktop-cake" aria-hidden="true"><CakeArtwork candle={candle}/></div>;
+  return <button className={desktop ? 'cake desktop-cake' : 'cake'} onClick={onClick} aria-label={label}>
+    <CakeArtwork candle={candle}/>
+    {!desktop && <small>{lang === 'ko' ? '케이크' : '蛋糕'}</small>}
+  </button>;
+}
+
 export function Room({
   starting,
+  candle,
   onStart,
   onCake,
   lang,
   notice,
 }: {
   starting: boolean;
+  candle: boolean;
   onStart: () => void;
   onCake: () => void;
   lang: string;
@@ -196,28 +240,7 @@ export function Room({
           <b />
         </span>
       </button>
-      <button
-        className="cake"
-        onClick={onCake}
-        aria-label={lang === 'ko' ? '케이크 살펴보기' : '查看蛋糕'}
-      >
-        <svg
-          viewBox="0 0 160 130"
-          fill="none"
-          stroke="#30465a"
-          strokeWidth="2.5"
-        >
-          <ellipse cx="79" cy="103" rx="71" ry="20" fill="#7d94a7" />
-          <ellipse cx="77" cy="98" rx="68" ry="19" fill="#e2e9eb" />
-          <path d="M36 50l49-28 43 47-4 32-88-15z" fill="#c6c1ba" />
-          <path d="M36 62l90 17M36 74l89 17" stroke="#f0eee4" strokeWidth="9" />
-          <path d="M36 50l49-28 43 47-92-16z" fill="#f0eee4" />
-          <path d="M36 50v36l88 15 4-32" />
-          <path d="M75 38c-15-18 11-27 17-9 5 13-11 15-17 9z" fill="#9d6f78" />
-          <path d="M81 26l1-8" />
-        </svg>
-        <small>{lang === 'ko' ? '케이크' : '蛋糕'}</small>
-      </button>
+      <CakeButton lang={lang} candle={candle} onClick={onCake}/>
       <div className="room-caption" role="status">
         {notice ||
           (lang === 'ko'

@@ -1,19 +1,29 @@
 import { useState } from 'react';
-import { Images, LockKeyhole, Pause, Play, RotateCcw, Volume2 } from 'lucide-react';
+import { LockKeyhole, Pause, Play, RotateCcw, Volume2 } from 'lucide-react';
 import { local, type Lang, type Preferences, type Text } from './game';
 
-const albumCode = '041206';
+import { albumCode, albumPhotos } from './archive-content';
+import { ArchiveStill } from './hidden-archive';
 
 export function Album({ lang }: { lang: Lang }) {
   const [code, setCode] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [incorrect, setIncorrect] = useState(false);
+  const [photo, setPhoto] = useState<number | null>(null);
 
-  if (unlocked) return <div className="panel album-panel">
-    <div className="album-empty">
-      <Images size={44} strokeWidth={1.3} aria-hidden="true"/>
-      <p>{local(['사진 없음', '暂无照片'], lang)}</p>
-    </div>
+  if (unlocked) return <div className="panel album-open">
+    {photo === null ? <div className="album-grid">
+      {albumPhotos.map((art, index) => <button key={art.motif} type="button" onClick={() => setPhoto(index)}>
+        <ArchiveStill art={art} lang={lang}/>
+        <span>{local(art.caption, lang)}</span>
+      </button>)}
+    </div> : <>
+      <button className="subtle" onClick={() => setPhoto(null)}>{local(['사진 목록', '返回照片'], lang)}</button>
+      <figure>
+        <ArchiveStill art={albumPhotos[photo]} lang={lang}/>
+        <figcaption>{local(albumPhotos[photo].caption, lang)}</figcaption>
+      </figure>
+    </>}
   </div>;
 
   return <div className="panel album-panel">

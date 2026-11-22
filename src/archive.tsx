@@ -2,13 +2,14 @@ import { FileText, Phone } from 'lucide-react';
 import { local, type Lang, type Progress, type SceneRequest, type Text } from './game';
 import { patientFiles, patientIds, type PatientId } from './patients';
 import { calls, memories } from './story';
+import { reportTitle } from './report-content';
 import { RetroIcon } from './visuals';
 
-export const apps = ['records', 'notes', 'album', 'video', 'mine', 'calc', 'ipod', 'settings', 'hidden', 'prescription'] as const;
+export const apps = ['records', 'notes', 'album', 'video', 'mine', 'calc', 'ipod', 'settings', 'hidden', 'reports'] as const;
 export type AppId = typeof apps[number];
 export const caseWindow = (id: PatientId) => `case-${id}` as const;
 type CaseWindow = ReturnType<typeof caseWindow>;
-export type WindowKey = AppId | CaseWindow | 'memo' | 'letter';
+export type WindowKey = AppId | CaseWindow;
 
 const caseTitles = Object.fromEntries(patientIds.map(id => [caseWindow(id), patientFiles[id].name])) as Record<CaseWindow, Text>;
 
@@ -22,10 +23,8 @@ export const titles: Record<WindowKey, Text> = {
   ipod: ['iPod', 'iPod'],
   settings: ['설정', '设置'],
   hidden: ['숨겨진 폴더', '隐藏文件夹'],
-  prescription: ['처방전', '处方单'],
+  reports: reportTitle,
   ...caseTitles,
-  memo: ['개인 메모', '私人备忘'],
-  letter: ['보내지 않은 편지', '没寄出的信'],
 };
 
 export function Records({ lang, open }: {
@@ -64,7 +63,7 @@ export function PatientRecord({ id, lang, progress, open, play }: {
         </button>;
       })}
     </div>
-    {state.followUp.completed && <div className="paper-note follow-up-record">
+    {state.report && state.followUp.completed && <div className="paper-note follow-up-record">
       <h3>{local(['전화 상담 기록', '电话回访记录'], lang)}</h3>
       <p>{local(data.followUpNote, lang)}</p>
       {reply && <p>{local(reply.line, lang)}</p>}
@@ -78,7 +77,7 @@ export function PatientRecord({ id, lang, progress, open, play }: {
 export function Notes({ lang, open }: { lang: Lang; open: (key: WindowKey) => void }) {
   const notes: { title: Text; lines: Text[]; target: WindowKey }[] = [
     { title: ['오늘 할 일', '今天要做的事'], lines: [
-      ['업무 기록을 다시 읽어 볼 것. 전화가 끝나면 기록을 처방전과 함께 보관한다.', '再过一遍工作记录。电话结束后，把回访记录和处方一起归档。'],
+      ['업무 기록을 다시 읽어 볼 것. 전화가 끝나면 기록을 사례 보고서와 함께 보관한다.', '再过一遍工作记录。电话结束后，把回访记录和个案报告一起归档。'],
       ['‘11월 6일’이 적힌 쪽을 접어 두었다.', '写着「11 月 6 日」的那页，我折了个角。'],
     ], target: 'records' },
     { title: ['나에게 남긴 메모', '留给自己的备忘'], lines: [
@@ -93,43 +92,5 @@ export function Notes({ lang, open }: { lang: Lang; open: (key: WindowKey) => vo
       {note.lines.map((line, index) => <p key={index}>{local(line, lang)}</p>)}
       <button className="subtle" onClick={() => open(note.target)}>{local(titles[note.target], lang)}</button>
     </article>)}</div>
-  </div>;
-}
-
-export function Hidden({ lang, locked, open }: {
-  lang: Lang;
-  locked: boolean;
-  open: (key: WindowKey) => void;
-}) {
-  if (locked) return <div className="panel locked-folder">
-    <h2>{local(['잠김', '已锁定'], lang)}</h2>
-  </div>;
-
-  return <div className="panel hidden-panel">
-    <RetroIcon kind="records"/>
-    <h2>{local(titles.hidden, lang)}</h2>
-    <div className="file-list">
-      {(['memo', 'letter'] as const).map(key => <button className="file-row" key={key} onClick={() => open(key)}>
-        <FileText size={21}/><strong>{local(titles[key], lang)}</strong>
-      </button>)}
-    </div>
-  </div>;
-}
-
-export function PersonalFile({ file, lang, progress, play }: {
-  file: 'memo' | 'letter';
-  lang: Lang;
-  progress: Progress;
-  play: (scene: SceneRequest) => void;
-}) {
-  return <div className="panel">
-    <p className="path-label">{local(titles.hidden, lang)} / 11.06</p>
-    <h2>{local(titles[file], lang)}</h2>
-    <div className="paper-note"><p>{local(file === 'memo' ?
-      ['사진 속 의자, 반쯤 열린 창문, 촛불 하나. 네 파일에서 공통으로 찾은 것들이다. 파일을 만든 시각도 모두 같았다.', '照片里的椅子、半开的窗、一根蜡烛。这是四份档案里都有的东西。它们甚至创建于同一刻。'] :
-      ['11월 6일. 꺼낸 적 없는 편지. 봉투 안쪽에도 같은 날짜가 적혀 있다.', '11 月 6 日。一封从未寄出的信。信封里面也写着同样的日期。'], lang)}</p></div>
-    {file === 'letter' && <button className="primary" onClick={() => play({ kind: 'ending' })}>
-      {local(progress.ending?.completed ? ['다시 읽기', '重读结尾'] : ['편지 펼치기', '展开信纸'], lang)}
-    </button>}
   </div>;
 }
