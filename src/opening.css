@@ -6,6 +6,7 @@
   overflow: hidden;
   background: var(--opening-background);
   color: #343b36;
+  user-select: none;
   transition: opacity 220ms ease;
 }
 
@@ -15,25 +16,24 @@
   aspect-ratio: var(--opening-ratio);
   container-type: inline-size;
   isolation: isolate;
+  overflow: hidden;
 }
 
-.opening-table {
+.opening-room-image {
   position: absolute;
-  top: 58%;
-  left: 50%;
-  width: 100vw;
-  height: 100dvh;
-  transform: translateX(-50%);
-  background: #d3d4c9;
-  border-block-start: 1px solid #c5c8bf;
+  height: auto;
+  max-width: none;
+  display: block;
+  image-rendering: pixelated;
   pointer-events: none;
+  user-select: none;
 }
 
 .opening-title {
   position: absolute;
   z-index: 1;
   margin: 0;
-  font: italic 400 8.8cqw/.83 Georgia, 'Times New Roman', serif;
+  font: italic 400 3.9cqw/.9 Georgia, 'Times New Roman', serif;
   letter-spacing: -.075em;
   color: #343a36;
   pointer-events: none;
@@ -79,20 +79,44 @@
 .opening-object:focus-visible { outline: 2px dashed #414b42; outline-offset: .35cqw; }
 .opening-object:disabled { cursor: default; opacity: 1; }
 
+/* The room supplies the computer artwork. Only its original pixels brighten. */
+.opening-room-object .opening-hotspot-mask { opacity: 0; }
+.opening-room-highlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  mask-mode: alpha;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.opening-room-object.is-hovered:not(:disabled) .opening-room-highlight,
+.opening-room-object:focus-visible .opening-room-highlight {
+  opacity: 1;
+  filter: brightness(var(--object-brightness));
+}
+
 .opening-status {
   position: absolute;
   z-index: 4;
-  left: 6%;
-  right: 6%;
-  bottom: 5%;
+  left: 50%;
+  bottom: 2%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 88%;
+  padding: .35em .65em;
   margin: 0;
   text-align: center;
-  font: 400 max(11px, 1.2cqw)/1.4 'Courier New', 'Noto Sans CJK KR', 'Noto Sans CJK SC', monospace;
-  color: #555d53;
+  font: 400 max(12px, 1.25cqw)/1.4 'Courier New', 'Noto Sans CJK KR', 'Noto Sans CJK SC', monospace;
+  color: #343a36;
+  background: #fffffff2;
   pointer-events: none;
 }
 
 .opening-entering { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
-  .opening-room, .opening-object img { transition: none; }
+  .opening-room, .opening-object img, .opening-room-highlight { transition: none; }
 }

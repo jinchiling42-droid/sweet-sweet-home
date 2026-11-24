@@ -26,11 +26,12 @@ npm run dev
 
 ## 替换初始界面美术
 
-初始界面使用独立的透明 PNG 和 1200 × 750 的设计坐标，整个场景根据窗口大小等比例缩放。打开电脑、观察蛋糕和蜡烛解锁继续使用游戏原有的状态与事件。
+初始界面直接显示原始房间图的横向裁切区域。当前取景从原图 (8, 316) 开始，宽 352、高 198（16:9）。场景等比例缩放，外部为纯白色。物品坐标和尺寸均以 736 × 736 原图像素为单位。打开电脑、观察蛋糕和蜡烛解锁继续使用游戏原有的状态与事件。
 
 | 文件 | 内容 |
 | --- | --- |
-| `src/assets/opening/computer.png` | 129 × 121，原图电脑抠图。 |
+| `src/assets/opening/computer.png` | 129 × 121，上一版的电脑抠图，保留供以后使用。 |
+| `src/assets/opening/computer-hotspot.png` | 129 × 121，与原图电脑位置对齐的可见轮廓热区，排除挡住主机的书堆。 |
 | `src/assets/opening/strawberry-cake.png` | 335 × 398，原图草莓蛋糕抠图。 |
 | `src/assets/opening/strawberry-cake-lit.png` | 同尺寸，已有蜡烛的剧情状态。 |
 | `src/assets/source/original-room.png`、`src/assets/source/original-cake.png` | 上传的 736 × 736 原图。 |
@@ -38,9 +39,9 @@ npm run dev
 | `src/opening.css` | 开场背景、标题排版及响应式缩放。 |
 | `src/opening.tsx` | 图片加载、透明像素点击检测和事件连接。 |
 
-用新的透明图像替换对应 PNG 即可。若素材格式改为 WebP 或 GIF，请在 `opening-config.ts` 修改导入路径。图片高度按原图比例自动计算，透明热点由加载图像的 Alpha 通道计算，因此无需重新编写物品点击事件。GIF 动画可使用保持稳定外轮廓的素材。标题也可导入图像，赋给 `openingTitle.image`，独立调整位置与宽度。
+需要调整取景时编辑 `openingScene.crop`。蛋糕的位置和大小由 `openingObjects` 中的 X/Y/width 决定。电脑依然显示在原始背景中，热区与原图像素对齐，悬停时只加亮对应区域。若更换原始房间图，需要同步对齐电脑热区。替换蛋糕透明 PNG 时，可以修改导入路径支持 WebP 或 GIF。透明热点由加载图像的 Alpha 通道计算。标题也可导入图像，赋给 `openingTitle.image`。
 
-原图只保存在源码中。生产构建会打包实际导入的图片，并使用相对资源路径，支持静态托管的子目录。
+生产构建会打包原始房间图、实际使用的蛋糕素材与电脑热区，并使用相对资源路径，支持静态托管的子目录。
 
 ## 开发调试
 
