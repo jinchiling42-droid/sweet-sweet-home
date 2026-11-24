@@ -1,0 +1,98 @@
+.opening-room {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--opening-background);
+  color: #343b36;
+  transition: opacity 220ms ease;
+}
+
+.opening-stage {
+  position: relative;
+  width: min(100%, calc(100dvh * var(--opening-ratio)));
+  aspect-ratio: var(--opening-ratio);
+  container-type: inline-size;
+  isolation: isolate;
+}
+
+.opening-table {
+  position: absolute;
+  top: 58%;
+  left: 50%;
+  width: 100vw;
+  height: 100dvh;
+  transform: translateX(-50%);
+  background: #d3d4c9;
+  border-block-start: 1px solid #c5c8bf;
+  pointer-events: none;
+}
+
+.opening-title {
+  position: absolute;
+  z-index: 1;
+  margin: 0;
+  font: italic 400 8.8cqw/.83 Georgia, 'Times New Roman', serif;
+  letter-spacing: -.075em;
+  color: #343a36;
+  pointer-events: none;
+}
+
+.opening-title span { display: block; }
+.opening-title img { display: block; width: 100%; height: auto; }
+
+.opening-item-slot { display: contents; }
+.opening-object {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
+  touch-action: manipulation;
+}
+
+.opening-object img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(.24cqw .4cqw 0 #2c32251a);
+  transition: filter 120ms ease;
+}
+
+/* Override desktop-wide button effects, including over transparent pixels. */
+.opening-object:hover:not(:disabled),
+.opening-object:active:not(:disabled) {
+  background: transparent;
+  transform: none;
+  filter: none;
+}
+.opening-object.is-hovered { cursor: pointer; }
+.opening-object.is-hovered:not(:disabled) img,
+.opening-object:focus-visible img {
+  filter: brightness(var(--object-brightness)) drop-shadow(.24cqw .4cqw 0 #2c32251a);
+}
+.opening-object:focus-visible { outline: 2px dashed #414b42; outline-offset: .35cqw; }
+.opening-object:disabled { cursor: default; opacity: 1; }
+
+.opening-status {
+  position: absolute;
+  z-index: 4;
+  left: 6%;
+  right: 6%;
+  bottom: 5%;
+  margin: 0;
+  text-align: center;
+  font: 400 max(11px, 1.2cqw)/1.4 'Courier New', 'Noto Sans CJK KR', 'Noto Sans CJK SC', monospace;
+  color: #555d53;
+  pointer-events: none;
+}
+
+.opening-entering { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .opening-room, .opening-object img { transition: none; }
+}

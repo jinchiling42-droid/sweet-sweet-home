@@ -18,7 +18,8 @@ import { HiddenArchive } from './hidden-archive';
 import { Novel } from './novel';
 import { patientIds } from './patients';
 import ipodPreview from './assets/ipod-preview.mp3';
-import { CakeButton, RetroIcon, Room } from './visuals';
+import { CakeButton, RetroIcon } from './visuals';
+import { OpeningRoom } from './opening';
 import './style.css';
 import './retro.css';
 import './playtest.css';
@@ -255,7 +256,7 @@ function App() {
   function inspectCake() {
     if (!progress.candleAppeared) {
       chime();
-      setToast(['접시 밑에 날짜가 적혀 있다. 11월 6일.', '盘子底下写着一个日期。11 月 6 日。']);
+      setToast(['책상 위에 딸기 케이크 한 조각이 놓여 있다.', '桌上放着一块草莓蛋糕。']);
       return;
     }
     const next = openEvaluation(progress);
@@ -409,7 +410,7 @@ function App() {
   }
 
   if (phase !== 'desktop') return <div ref={room}>
-    <Room lang={lang} starting={phase === 'boot'} candle={progress.candleAppeared}
+    <OpeningRoom lang={lang} starting={phase === 'boot'} candle={progress.candleAppeared}
       onStart={() => {
         chime();
         setToast(null);
