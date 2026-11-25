@@ -58,4 +58,33 @@ npm run dev
 | 主角评估报告 | `src/evaluation-content.ts` |
 | 纸张与档案界面、蛋糕画面 | `src/case-reports.tsx`、`src/hidden-archive.tsx`、`src/evaluation.tsx`、`src/visuals.tsx`、`src/playtest.css` |
 
-每条文本依次填写韩文和中文。替换内容时保留已有档案、回忆和选项的 ID，以便兼容旧存档。部署配置位于 `.openai/hosting.json`。
+每条文本依次填写韩文和中文。替换内容时保留已有档案、回忆和选项的 ID，以便兼容旧存档。
+
+## GitHub Pages 开发与发布
+
+| 项目 | 固定配置 |
+| --- | --- |
+| 仓库 | `jinchiling42-droid/sweet-sweet-home` |
+| 正式试玩 | [Sweet Sweet Home](https://jinchiling42-droid.github.io/sweet-sweet-home/) |
+| 发布分支 | `codex/sweet-sweet-home-private-playtest` |
+| 发布来源 | Settings → Pages → GitHub Actions |
+| 自动化 | [Pages 工作流](.github/workflows/pages.yml) |
+
+1. 从发布分支最新提交创建开发分支。图片、GIF、字体、音频和视频等资源连同引用代码一起提交。游戏资源优先从 `src/assets/` 导入，Vite 保持 `base: './'`。检查文件名大小写及构建产物中的路径。
+2. 使用 Node.js 24 运行以下检查，再在 Chrome 中预览构建产物。打开终端显示的地址下的 `/sweet-sweet-home/`，确认改动、页面刷新和新增资源正常。
+
+   ```sh
+   npm ci
+   node --test tests/progress.test.mjs
+   npm run build
+   node scripts/check-pages.mjs
+   npm exec vite -- preview --base /sweet-sweet-home/
+   ```
+
+3. 向发布分支发起 Pull Request，查看 Actions 的构建检查。检查通过后，记录待发布的提交号并取得用户对该版本的发布确认。
+4. 合入已确认的版本。发布分支的推送会依次触发 `build`、`deploy` 和 `verify`。`verify` 通过正式地址比较首页及资源文件与当次构建产物的 SHA-256，区分旧缓存与本次发布。
+5. 核对三个任务的结果，用 Chrome 打开原正式地址，验证本次改动和实际资源加载。记录已发布的提交号、Actions 运行链接和验证结果。
+
+出现失败时查看 [Actions 运行记录](https://github.com/jinchiling42-droid/sweet-sweet-home/actions) 中失败的任务。构建失败先修复并重测。部署失败检查 Pages 发布来源和 `github-pages` 环境的发布分支规则。校验失败检查正式站点、资源和 CDN 是否已更新。回退时，从当前发布分支创建开发分支，用 `git revert` 撤销有问题的提交。如果是合并提交，执行 `git revert -m 1`。回退候选版本遵循相同的测试和发布确认流程。保留提交历史、现有仓库和正式地址。
+
+发布前的稳定版本可参照 [当前已验证的发布提交 `7f8fef4`](https://github.com/jinchiling42-droid/sweet-sweet-home/commit/7f8fef4c51bc66be7e3a2ae5f48974a013baa37e)。

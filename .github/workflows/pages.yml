@@ -1,25 +1,26 @@
 name: Deploy Sweet Sweet Home to GitHub Pages
 
 on:
+  pull_request:
+    branches:
+      - codex/sweet-sweet-home-private-playtest
   push:
     branches:
       - codex/sweet-sweet-home-private-playtest
-  workflow_dispatch:
 
 permissions: {}
 
 concurrency:
-  group: github-pages
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'push' && 'github-pages' || format('pages-check-{0}', github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
-    if: github.ref == 'refs/heads/codex/sweet-sweet-home-private-playtest'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - name: Check out the playtest branch
+      - name: Check out the revision to test
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
@@ -39,17 +40,24 @@ jobs:
       - name: Build the game
         run: npm run build
 
+      - name: Check asset paths under the Pages subdirectory
+        run: node scripts/check-pages.mjs
+
       - name: Upload the static build
+        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: dist
 
   deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/codex/sweet-sweet-home-private-playtest'
     needs: build
     runs-on: ubuntu-latest
     permissions:
       pages: write
       id-token: write
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -60,3 +68,34 @@ jobs:
       - name: Publish to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
+
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the verification script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+
+      - name: Download the published build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: github-pages
+          path: ${{ runner.temp }}/pages-build
+
+      - name: Verify public responses against the published build
+        env:
+          PAGES_URL: ${{ needs.deploy.outputs.page_url }}
+        run: |
+          mkdir -p dist
+          tar -xf "$RUNNER_TEMP/pages-build/artifact.tar" -C dist
+          node scripts/check-pages.mjs "$PAGES_URL"
